@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date, ForeignKey
+from sqlalchemy import Column, Integer, String, Date, ForeignKey, Numeric
 from .database import Base
 from sqlalchemy.orm import relationship
 
@@ -49,3 +49,40 @@ class ClassRegistration(Base):
 
     client = relationship("Client")
     class_info = relationship("Class")
+
+class Article(Base):
+    __tablename__ = "article"
+
+    article_id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(128), nullable=False)
+    price = Column(Numeric(10, 2), nullable=False)
+    type = Column(String(128), nullable=False)
+    stock = Column(Integer, nullable=False)
+
+class Stocktaking(Base):
+    __tablename__ = "stocktaking"
+
+    stocktaking_id = Column(Integer, primary_key=True, index=True)
+    gym_id = Column(Integer, nullable=False)
+    stocktaking_date = Column(Date, nullable=False)
+
+class TransactionClient(Base):
+    __tablename__ = "transaction_client"
+
+    transaction_client_id = Column(Integer, primary_key=True, index=True)
+    client_id = Column(Integer, ForeignKey("client.client_id"), nullable=False)
+    receptionist_employee_id = Column(Integer, nullable=False)
+    transaction_date = Column(Date, nullable=False)
+
+    client = relationship("Client")
+    articles = relationship("TransactionArticle", back_populates="transaction")
+
+class TransactionArticle(Base):
+    __tablename__ = "transaction_article"
+
+    transaction_client_id = Column(Integer, ForeignKey("transaction_client.transaction_client_id"), primary_key=True)
+    article_id = Column(Integer, ForeignKey("article.article_id"), primary_key=True)
+    quantity = Column(Integer, nullable=True)
+
+    transaction = relationship("TransactionClient", back_populates="articles")
+    article = relationship("Article")
