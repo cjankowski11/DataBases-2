@@ -502,6 +502,234 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE PROCEDURE add_subscriptions(
+    p_subscription_id INT,
+    p_name VARCHAR(128),
+    p_price NUMERIC(10,2),
+    p_duration INT,
+    p_entry_until DATE DEFAULT NULL
+
+)
+LANGUAGE plpgsql as $$
+BEGIN
+    IF p_price < 0 THEN
+        RAISE EXCEPTION 'Price can not be negative: ', p_price;
+    END IF;
+
+    IF p_duration <= 0 THEN
+        RAISE EXCEPTION 'Time must be bigger than 0 ';
+    END IF;
+
+    INSERT INTO subscription (subscription_id, name, price,duration,entry_until)
+    VALUES (p_subscription_id,p_name,p_price, p_duration, p_entry_until)
+    ON CONFLICT (subscription_id) DO UPDATE SET
+        name = EXCLUDED.name,
+        price = EXCLUDED.price,
+        duration = EXCLUDED.duration,
+        entry_until = EXCLUDED.entry_until;
+
+    RAISE NOTICE 'Subscription "%" (id=%) added/updated', p_name, p_subscription_id;
+END;
+$$;
+
+CREATE OR REPLACE PROCEDURE add_equipment_base(
+    p_equipment_id   INTEGER,
+    p_serial_number  INTEGER,
+    p_producer       VARCHAR(128),
+    p_name           VARCHAR(64),
+    p_state          VARCHAR(16),
+    p_date_bought    DATE,
+    p_date_produced  DATE,
+    p_price          NUMERIC(10, 2),
+    p_equipment_type VARCHAR(16),
+    p_gym_id         INTEGER DEFAULT NULL
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+    IF p_price < 0 THEN
+        RAISE EXCEPTION 'Price can not be negative';
+    END IF;
+
+    IF p_date_produced > p_date_bought THEN
+        RAISE EXCEPTION 'Production date (%) can not be later than buy date (%)',
+        p_date_produced,p_date_bought;
+    END IF;
+
+      IF p_gym_id IS NOT NULL AND NOT EXISTS (
+        SELECT 1 FROM gym WHERE gym_id = p_gym_id
+    ) THEN
+        RAISE EXCEPTION 'Gym  id=% does not exist', p_gym_id;
+    END IF;
+
+    INSERT INTO equipment (
+        equipment_id, serial_number, gym_id, producer, name,
+        state, date_bought, date_produced, price, equipment_type
+    ) VALUES (
+        p_equipment_id, p_serial_number, p_gym_id, p_producer, p_name,
+        p_state, p_date_bought, p_date_produced, p_price, p_equipment_type
+    );
+END;
+$$;
+
+CREATE OR REPLACE PROCEDURE add_weight(
+    p_equipment_id  INTEGER,
+    p_serial_number INTEGER,
+    p_producer      VARCHAR(128),
+    p_name          VARCHAR(64),
+    p_state         VARCHAR(16),
+    p_date_bought   DATE,
+    p_date_produced DATE,
+    p_price         NUMERIC(10, 2),
+    p_weight        NUMERIC(10, 2),  -- ciężar w kg
+    p_type          VARCHAR(64),      -- np. 'dumbbell', 'barbell', 'plate'
+    p_material      VARCHAR(32),      -- np. 'cast iron', 'rubber'
+    p_gym_id        INTEGER DEFAULT NULL
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+    IF p_weight <= 0 THEN
+        RAISE EXCEPTION 'Weight must be > 0';
+    END IF;
+
+    CALL add_equipment_base(p_equipment_id, p_serial_number, p_producer, p_name,
+        p_state, p_date_bought, p_date_produced, p_price, 'weight', p_gym_id
+    );
+
+    INSERT INTO weight (equipment_id,weight,type, material) VALUES (p_equipment_id,p_weight,p_type,p_material);
+
+    RAISE NOTICE 'Weight "%" (id=%) added', p_name,p_equipment_id;
+END;
+$$;
+
+CREATE OR REPLACE PROCEDURE add_machine(
+    p_equipment_id   INTEGER,
+    p_serial_number  INTEGER,
+    p_producer       VARCHAR(128),
+    p_name           VARCHAR(64),
+    p_state          VARCHAR(16),
+    p_date_bought    DATE,
+    p_date_produced  DATE,
+    p_price          NUMERIC(10, 2),
+    p_max_weight     INTEGER,       --kg
+    p_bodypart       VARCHAR(128),
+    p_gym_id         INTEGER DEFAULT NULL
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+    IF p_max_weight <= 0 THEN
+        RAISE EXCEPTION 'Max weight must be > 0';
+    END IF;
+
+    CALL add_equipment_base(
+        p_equipment_id, p_serial_number, p_producer, p_name,
+        p_state, p_date_bought, p_date_produced, p_price, 'machine', p_gym_id
+    );
+
+    INSERT INTO machine (equipment_id, max_weight, bodypart_target)
+    VALUES (p_equipment_id, p_max_weight, p_bodypart);
+
+    RAISE NOTICE 'Machine "%" (id=%) added.', p_name, p_equipment_id;
+END;
+$$;
+
+CREATE OR REPLACE PROCEDURE add_accessory(
+    p_equipment_id  INTEGER,
+    p_serial_number INTEGER,
+    p_producer      VARCHAR(128),
+    p_name          VARCHAR(64),
+    p_state         VARCHAR(16),
+    p_date_bought   DATE,
+    p_date_produced DATE,
+    p_price         NUMERIC(10, 2),
+    p_type          VARCHAR(64),      -- 'resistance band', 'mat', 'rope'
+    p_gym_id        INTEGER DEFAULT NULL
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+    CALL add_equipment_base(
+        p_equipment_id, p_serial_number, p_producer, p_name,
+        p_state, p_date_bought, p_date_produced, p_price, 'accessory', p_gym_id
+    );
+
+    INSERT INTO accessory (equipment_id, type)
+    VALUES (p_equipment_id, p_type);
+
+    RAISE NOTICE 'Accessory "%" (id=%) added.', p_name, p_equipment_id;
+END;
+$$;
+
+CREATE OR REPLACE PROCEDURE add_client_subscription(
+    p_client_subscription_id INTEGER,
+    p_client_id                INTEGER,
+    p_subscription_id          INTEGER,
+    p_transaction_date         DATE DEFAULT CURRENT_DATE,
+    p_paid_now                 CHAR(1) DEFAULT 'Y',        -- 'Y' lub 'N'
+    p_receptionist_employee_id INTEGER DEFAULT NULL        -- NULL = zakup online
+)
+LANGUAGE plpgsql AS $$
+DECLARE
+    v_duration INTEGER;
+    v_expiration DATE;
+    v_entry_until DATE;
+
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM client WHERE client_id = p_client_id) THEN
+        RAISE EXCEPTION 'Client id=% does not exist', p_client_id;
+    END IF;
+
+    SELECT duration, entry_until
+    INTO v_duration, v_entry_until
+    FROM subscription
+    WHERE subscription_id = p_subscription_id
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Subscription id=% does not exist', p_subscription_id;
+    END IF;
+
+
+    IF p_receptionist_employee_id IS NOT NULL AND NOT EXISTS (
+        SELECT 1 FROM receptionist WHERE employee_id = p_receptionist_employee_id
+    ) THEN
+        RAISE EXCEPTION 'Recepcjonist id=% does not exist', p_receptionist_employee_id;
+    END IF;
+
+
+    IF p_paid_now NOT IN ('Y', 'N') THEN  --validation
+        RAISE EXCEPTION 'paid_now must be "Y" or "N"';
+    END IF;
+
+
+    v_expiration := p_transaction_date + v_duration;
+
+    IF v_entry_until IS NOT NULL AND v_entry_until < v_expiration THEN
+        RAISE NOTICE 'ALERT: entry_until (%) earlier than expiration_date (%)',
+            v_entry_until, v_expiration;
+    END IF;
+
+    INSERT INTO client_subscription (
+        client_subscription_id,
+        client_id,
+        receptionist_employee_id,
+        subscription_id,
+        transaction_date,
+        paid_now,
+        expiration_date
+    ) VALUES (
+        p_client_subscription_id,
+        p_client_id,
+        p_receptionist_employee_id,
+        p_subscription_id,
+        p_transaction_date,
+        p_paid_now,
+        v_expiration
+    );
+
+    RAISE NOTICE 'Subscription id=% set to client id=%, expire: %',
+        p_subscription_id, p_client_id, v_expiration;
+END;
+$$;
+
+
 CALL generate_rooms();
 CALL generate_classes(20);
 CALL generate_registrations();
