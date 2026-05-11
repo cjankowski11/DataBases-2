@@ -729,6 +729,51 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE PROCEDURE add_entry(
+    p_entry_id   INTEGER,
+    p_client_id  INTEGER,
+    p_gym_id     INTEGER,
+    p_entry_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    p_check_sub  BOOLEAN DEFAULT TRUE
+)
+LANGUAGE plpgsql AS $$
+DECLARE
+    v_active_sub_count INTEGER;
+BEGIN
+
+    IF NOT EXISTS (SELECT 1 FROM client WHERE client_id = p_client_id) THEN
+        RAISE EXCEPTION 'Client id=% does not exist', p_client_id;
+    END IF;
+
+
+    IF NOT EXISTS (SELECT 1 FROM gym WHERE gym_id = p_gym_id) THEN
+        RAISE EXCEPTION 'Gym id=% does not exist', p_gym_id;
+    END IF;
+
+
+    IF p_check_sub THEN
+        SELECT COUNT(*) INTO v_active_sub_count
+        FROM   client_subscription
+        WHERE  client_id       = p_client_id
+          AND  expiration_date >= p_entry_time::DATE
+          AND  paid_now        = 'Y';
+
+        IF v_active_sub_count = 0 THEN
+            RAISE EXCEPTION
+                'Client id=% does not have active, paid subscription on day %',
+                p_client_id, p_entry_time::DATE;
+        END IF;
+    END IF;
+
+    -- Zapis wejścia
+    INSERT INTO entry (entry_id, client_id, entry_time, gym_id)
+    VALUES (p_entry_id, p_client_id, p_entry_time, p_gym_id);
+
+    RAISE NOTICE 'Entry registered: client=%, gym=%, time=%',
+        p_client_id, p_gym_id, p_entry_time;
+END;
+$$;
+
 
 CALL generate_rooms();
 CALL generate_classes(20);
