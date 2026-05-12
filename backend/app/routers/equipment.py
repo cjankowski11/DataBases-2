@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, with_polymorphic
 
 from ..database import get_db
 from ..models import Equipment as EquipmentModel, Weight as WeightModel, Machine as MachineModel, Accessory as AccessoryModel
@@ -17,8 +17,8 @@ router = APIRouter(
 @router.get("/", response_model=ApiResponse)
 async def get_equipment(db: AsyncSession = Depends(get_db)):
     try:
-        # Polymorphic select
-        query = select(EquipmentModel).options(joinedload(EquipmentModel.gym))
+        poly = with_polymorphic(EquipmentModel, [WeightModel,MachineModel,AccessoryModel])
+        query = select(poly).options(joinedload(poly.gym))
         result = await db.execute(query)
         equipment_list = result.scalars().all()
 
@@ -44,7 +44,8 @@ async def get_equipment(db: AsyncSession = Depends(get_db)):
 @router.get("/{equipment_id}", response_model=ApiResponse)
 async def get_equipment_item(equipment_id: int, db: AsyncSession = Depends(get_db)):
     try:
-        query = select(EquipmentModel).where(EquipmentModel.equipment_id == equipment_id).options(joinedload(EquipmentModel.gym))
+        poly = with_polymorphic(EquipmentModel, [WeightModel,MachineModel,AccessoryModel])
+        query = select(poly).where(EquipmentModel.equipment_id == equipment_id).options(joinedload(poly.gym))
         result = await db.execute(query)
         eq = result.scalar_one_or_none()
 

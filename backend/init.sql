@@ -513,7 +513,7 @@ CREATE OR REPLACE PROCEDURE add_subscriptions(
 LANGUAGE plpgsql as $$
 BEGIN
     IF p_price < 0 THEN
-        RAISE EXCEPTION 'Price can not be negative: ', p_price;
+        RAISE EXCEPTION 'Price can not be negative: %', p_price;
     END IF;
 
     IF p_duration <= 0 THEN
@@ -680,7 +680,7 @@ BEGIN
     SELECT duration, entry_until
     INTO v_duration, v_entry_until
     FROM subscription
-    WHERE subscription_id = p_subscription_id
+    WHERE subscription_id = p_subscription_id;
 
     IF NOT FOUND THEN
         RAISE EXCEPTION 'Subscription id=% does not exist', p_subscription_id;
@@ -723,9 +723,7 @@ BEGIN
         p_paid_now,
         v_expiration
     );
-
-    RAISE NOTICE 'Subscription id=% set to client id=%, expire: %',
-        p_subscription_id, p_client_id, v_expiration;
+    RAISE NOTICE 'Subscription id=% set to client id=%, expire: %', p_subscription_id, p_client_id, v_expiration;
 END;
 $$;
 
@@ -733,7 +731,7 @@ CREATE OR REPLACE PROCEDURE add_entry(
     p_entry_id   INTEGER,
     p_client_id  INTEGER,
     p_gym_id     INTEGER,
-    p_entry_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    p_entry_time TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     p_check_sub  BOOLEAN DEFAULT TRUE
 )
 LANGUAGE plpgsql AS $$
@@ -778,6 +776,21 @@ $$;
 CALL generate_rooms();
 CALL generate_classes(20);
 CALL generate_registrations();
+
+CALL add_subscriptions(1,'Monthly',160.00,30);
+CALL add_subscriptions(2,'Yearly',140.00,43);
+CALL add_subscriptions(3,'Student', 120.00, 20);
+
+CALL add_client_subscription(1, 201, 1, CURRENT_DATE, 'Y',NULL);
+CALL add_client_subscription(2, 202, 2, CURRENT_DATE, 'Y',NULL);
+
+CALL add_entry(1,201,1, CURRENT_TIMESTAMP - INTERVAL '2 hours');
+CALL add_entry(2,202,1, CURRENT_TIMESTAMP - INTERVAL '3 hours');
+
+CALL add_weight(1, 10001, 'Zdrofit', 'Olympic bar', 'new','2024-03-01', '2023-06-01', 1200.00, 20.0, 'barbell', 'steel', 1);
+CALL add_machine(2, 20001, 'Technogym', 'Chest Press', 'good','2023-01-15', '2022-09-01', 8500.00, 150, 'chest', 1);
+CALL add_accessory(3, 30001, 'Europlex', 'band', 'new','2024-05-01', '2024-01-01', 45.00, 'resistance band', 1);
+
 
 
 -- TRIGGERS, FUNCTIONS AND OTHER PROCEDURES
