@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date, ForeignKey
+from sqlalchemy import Column, Integer, String, Date, ForeignKey, Time, Numeric
 from .database import Base
 from sqlalchemy.orm import relationship
 
@@ -49,3 +49,46 @@ class ClassRegistration(Base):
 
     client = relationship("Client")
     class_info = relationship("Class")
+
+class Address(Base):
+    __tablename__ = "address"
+
+    address_id = Column(Integer, primary_key=True, index=True)
+    city = Column(String(64), nullable=False)
+    street = Column(String(64), nullable=False)
+    building_number = Column(Integer, nullable=False)
+    postal_code = Column(String(6), nullable=False)
+
+class Gym(Base):
+    __tablename__ = "gym"
+
+    gym_id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(64), nullable=False)
+    established = Column(Date, nullable=False)
+    email = Column(String(128), nullable=True)
+    phone = Column(String(9), nullable=True)
+    area = Column(Integer, nullable=True)
+    open_hour = Column(Time, nullable=True)
+    close_hour = Column(Time, nullable=True)  
+    address_id = Column(Integer, ForeignKey("address.address_id"), nullable=False)
+
+    address = relationship("Address")
+
+class Contract(Base):
+    __tablename__ = "contract"
+
+    contract_id = Column(Integer, primary_key=True, index=True)
+    gym_id = Column(Integer, ForeignKey('gym.gym_id'), nullable=False)
+    sponsor_id = Column(Integer, ForeignKey('sponsor.sponsor_id'), nullable=False)
+    payment = Column(Numeric(precision=10, scale=2), nullable=False)
+    contract_date = Column(Date, nullable=False)
+    expiration_date = Column(Date, nullable=False)
+
+    gym = relationship("Gym")
+    sponsor = relationship("Sponsor")
+
+class Sponsor(Base):
+    __tablename__ = "sponsor"
+
+    sponsor_id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(128), nullable=False)

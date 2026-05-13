@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from .database import engine, Base
 import asyncio
-from .routers import rooms, classes, class_types, class_registrations
+from .routers import rooms, classes, class_types, class_registrations, addresses, gyms, contracts, sponsors
 
 app = FastAPI()
 
@@ -9,6 +9,10 @@ app.include_router(rooms.router)
 app.include_router(classes.router)
 app.include_router(class_types.router)
 app.include_router(class_registrations.router)
+app.include_router(addresses.router)
+app.include_router(gyms.router)
+app.include_router(contracts.router)
+app.include_router(sponsors.router)
 
 @app.on_event("startup")
 async def startup():
