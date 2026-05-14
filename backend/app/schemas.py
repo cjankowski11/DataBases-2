@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from typing import List, Optional, Any
-from datetime import date
+from datetime import date, time
+from decimal import Decimal
 
 class ApiResponse(BaseModel):
     status: str  # "SUCCEEDED" or "FAILED"
@@ -117,5 +118,70 @@ class TransactionClientSchema(BaseModel):
     receptionist_employee_id: int
     transaction_date: date
     articles: List[TransactionArticleSchema] = []
+
+    model_config = {"from_attributes": True}
+
+
+class AddressBase(BaseModel):
+    city: str
+    street: str
+    building_number: int
+    postal_code: str
+
+class AddressCreate(AddressBase):
+    pass
+
+class AddressSchema(AddressBase):
+    address_id: int
+
+    model_config = {"from_attributes": True}
+
+
+class GymBase(BaseModel):
+    name: str
+    established: date
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    area: Optional[int] = None
+    open_hour: Optional[time] = None
+    close_hour: Optional[time] = None
+    address_id: int
+
+class GymCreate(GymBase):
+    pass
+
+class GymSchema(GymBase):
+    gym_id: int
+    address: Optional[AddressSchema] = None
+
+    model_config = {"from_attributes": True}
+
+
+class SponsorBase(BaseModel):
+    name: str
+
+class SponsorCreate(SponsorBase):
+    pass
+
+class SponsorSchema(SponsorBase):
+    sponsor_id: int
+
+    model_config = {"from_attributes": True}
+
+
+class ContractBase(BaseModel):
+    gym_id: int
+    sponsor_id: int
+    payment: Decimal
+    contract_date: date
+    expiration_date: date
+
+class ContractCreate(ContractBase):
+    pass
+
+class ContractSchema(ContractBase):
+    contract_id: int
+    gym: Optional[GymSchema] = None
+    sponsor: Optional[SponsorSchema] = None
 
     model_config = {"from_attributes": True}

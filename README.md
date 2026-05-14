@@ -18,8 +18,8 @@
 ## Setting environment
 ```
 python3 -m venv venv
-aktywuj venva
-pip install -r requirements
+source ./venv/bin/activate
+pip install -r backend/requirements.txt
 
 w glownym katalogu
 docker compose up --build
