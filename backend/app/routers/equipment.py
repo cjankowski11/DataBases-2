@@ -4,7 +4,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import joinedload, with_polymorphic
 
 from ..database import get_db
-from ..models import Equipment as EquipmentModel, Weight as WeightModel, Machine as MachineModel, Accessory as AccessoryModel
+from ..models import (
+    Equipment as EquipmentModel,
+    Weight as WeightModel,
+    Machine as MachineModel,
+    Accessory as AccessoryModel,
+    Gym as GymModel,
+    Address as AddressModel
+    )
 from ..schemas import EquipmentUnion, ApiResponse, WeightSchema, MachineSchema, AccessorySchema, EquipmentSchema
 from ..utils.error_handle import handle_error, NotFoundError
 
@@ -18,7 +25,7 @@ router = APIRouter(
 async def get_equipment(db: AsyncSession = Depends(get_db)):
     try:
         poly = with_polymorphic(EquipmentModel, [WeightModel,MachineModel,AccessoryModel])
-        query = select(poly).options(joinedload(poly.gym))
+        query = select(poly).options(joinedload(poly.gym).joinedload(GymModel.address))
         result = await db.execute(query)
         equipment_list = result.scalars().all()
 
@@ -45,7 +52,7 @@ async def get_equipment(db: AsyncSession = Depends(get_db)):
 async def get_equipment_item(equipment_id: int, db: AsyncSession = Depends(get_db)):
     try:
         poly = with_polymorphic(EquipmentModel, [WeightModel,MachineModel,AccessoryModel])
-        query = select(poly).where(EquipmentModel.equipment_id == equipment_id).options(joinedload(poly.gym))
+        query = select(poly).where(EquipmentModel.equipment_id == equipment_id).options(joinedload(poly.gym).joinedload(GymModel.address))
         result = await db.execute(query)
         eq = result.scalar_one_or_none()
 

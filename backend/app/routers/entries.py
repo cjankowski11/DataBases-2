@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
 from ..database import get_db
-from ..models import Entry as EntryModel
+from ..models import Entry as EntryModel,Gym as GymModel, Address as AddressModel
 from ..schemas import EntrySchema, ApiResponse
 from ..utils.error_handle import handle_error, NotFoundError
 
@@ -19,7 +19,7 @@ async def get_entries(db: AsyncSession = Depends(get_db)):
     try:
         query = select(EntryModel).options(
             joinedload(EntryModel.client),
-            joinedload(EntryModel.gym)
+            joinedload(EntryModel.gym).joinedload(GymModel.address)
         )
         result = await db.execute(query)
         entries = result.scalars().all()
@@ -39,7 +39,7 @@ async def get_entry(entry_id: int, db: AsyncSession = Depends(get_db)):
     try:
         query = select(EntryModel).where(EntryModel.entry_id == entry_id).options(
             joinedload(EntryModel.client),
-            joinedload(EntryModel.gym)
+            joinedload(EntryModel.gym).joinedload(GymModel.address)
         )
         result = await db.execute(query)
         entry_db = result.scalar_one_or_none()

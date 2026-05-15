@@ -3,19 +3,6 @@ from .database import Base
 from sqlalchemy.orm import relationship, column_property
 
 
-
-class Gym(Base):
-    __tablename__ = "gym"
-    gym_id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(64), nullable=False)
-    established = Column(Date, nullable=False)
-    email = Column(String(128))
-    phone = Column(String(9))
-    area = Column(Integer)
-    open_hour = Column(Time)
-    close_hour = Column(Time)
-    address_id = Column(Integer, nullable=False)
-
 class Room(Base):
     __tablename__ = "room"
 
