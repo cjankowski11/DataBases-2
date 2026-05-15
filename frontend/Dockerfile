@@ -1,11 +1,17 @@
-FROM node:20-alpine AS builder
+FROM node:20-alpine AS base
 WORKDIR /app
 
 COPY package*.json ./
 
-# Używamy npm install, bo nie mamy pliku package-lock.json
 RUN npm install
 
+FROM base AS dev
+COPY . .
+EXPOSE 5173
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+
+
+FROM base AS builder
 COPY . .
 RUN npm run build
 
