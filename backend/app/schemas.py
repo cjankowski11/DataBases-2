@@ -35,6 +35,7 @@ class ClassSchema(BaseModel):
     duration: int
     capacity: int
     room_id: int
+    occupancy_pct: float = 0.0
 
     class_type: Optional[ClassTypeSchema] = None
     room: Optional[RoomSchema] = None
