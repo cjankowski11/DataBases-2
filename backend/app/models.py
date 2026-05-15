@@ -1,6 +1,6 @@
-from sqlalchemy import Column, Integer, String, Date, ForeignKey, Time, Numeric
+from sqlalchemy import Column, Integer, String, Date, ForeignKey, func, Time, Numeric
 from .database import Base
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, column_property
 
 class Room(Base):
     __tablename__ = "room"
@@ -25,6 +25,9 @@ class Class(Base):
     duration = Column(Integer, nullable=False)
     capacity = Column(Integer, nullable=False)
     room_id = Column(Integer, ForeignKey("room.room_id"), nullable=False)
+    occupancy_pct = column_property(
+        func.get_class_occupancy_pct(class_id)
+    )
 
     class_type = relationship("ClassType")
     room = relationship("Room")
@@ -69,7 +72,7 @@ class Gym(Base):
     phone = Column(String(9), nullable=True)
     area = Column(Integer, nullable=True)
     open_hour = Column(Time, nullable=True)
-    close_hour = Column(Time, nullable=True)  
+    close_hour = Column(Time, nullable=True)
     address_id = Column(Integer, ForeignKey("address.address_id"), nullable=False)
 
     address = relationship("Address")
