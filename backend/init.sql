@@ -507,7 +507,127 @@ CALL generate_classes(20);
 CALL generate_registrations();
 
 
+
 -- TRIGGERS, FUNCTIONS AND OTHER PROCEDURES
+
+CREATE OR REPLACE PROCEDURE generate_articles()
+LANGUAGE plpgsql AS $$
+DECLARE
+    i INT;
+    v_name VARCHAR;
+    v_price NUMERIC;
+    v_type VARCHAR;
+BEGIN
+    FOR i IN 1..35 LOOP
+        IF i <= 10 THEN
+            v_name := 'Baton Proteinowy Wariant ' || i;
+            v_price := 10.00 + (RANDOM() * 5)::NUMERIC(10,2);
+            v_type := 'Jedzenie';
+        ELSIF i <= 20 THEN
+            v_name := 'Napój Izotoniczny Smak ' || (i - 10);
+            v_price := 5.00 + (RANDOM() * 4)::NUMERIC(10,2);
+            v_type := 'Napój';
+        ELSIF i <= 30 THEN
+            v_name := 'Odżywka Białkowa ' || (i - 20) || 'kg';
+            v_price := 80.00 + (RANDOM() * 50)::NUMERIC(10,2);
+            v_type := 'Suplement';
+        ELSE
+            v_name := 'Akcesorium Treningowe ' || (i - 30);
+            v_price := 20.00 + (RANDOM() * 80)::NUMERIC(10,2);
+            v_type := 'Akcesoria';
+        END IF;
+
+        INSERT INTO article (article_id, name, price, type, stock)
+        VALUES (i, v_name, v_price, v_type, 1000 + (RANDOM() * 500)::INT)
+        ON CONFLICT DO NOTHING;
+    END LOOP;
+END;
+$$;
+
+CREATE OR REPLACE PROCEDURE generate_more_clients(num INT)
+LANGUAGE plpgsql AS $$
+DECLARE
+    i INT;
+    v_max_id INT;
+BEGIN
+    SELECT COALESCE(MAX(client_id), 0) INTO v_max_id FROM client;
+    FOR i IN 1..num LOOP
+        v_max_id := v_max_id + 1;
+        INSERT INTO client (client_id, name, surname, email, phone, birth_date)
+        VALUES (
+            v_max_id,
+            'Klient_' || v_max_id,
+            'Testowy',
+            'klient' || v_max_id || '@test.com',
+            (100000000 + (RANDOM() * 899999999)::INT)::VARCHAR,
+            DATE '1960-01-01' + (RANDOM() * (DATE '2005-12-31' - DATE '1960-01-01'))::INT
+        ) ON CONFLICT DO NOTHING;
+    END LOOP;
+END;
+$$;
+
+CREATE OR REPLACE PROCEDURE generate_stocktaking()
+LANGUAGE plpgsql AS $$
+BEGIN
+    INSERT INTO stocktaking (stocktaking_id, gym_id, stocktaking_date) VALUES
+        (1, 1, '2024-03-31'),
+        (2, 1, '2024-06-30'),
+        (3, 1, '2024-09-30')
+    ON CONFLICT DO NOTHING;
+END;
+$$;
+
+CREATE OR REPLACE PROCEDURE generate_transactions(num_transactions INT)
+LANGUAGE plpgsql AS $$
+DECLARE
+    i INT;
+    j INT;
+    v_receptionist_id INT;
+    v_client_id INT;
+    v_article_id INT;
+    v_random_date DATE;
+    v_max_trans_id INT;
+    v_num_articles INT;
+    v_qty INT;
+BEGIN
+    SELECT employee_id INTO v_receptionist_id FROM receptionist LIMIT 1;
+    IF v_receptionist_id IS NULL THEN
+        INSERT INTO employee (employee_id, name, surname, date_employed, is_employed, gender, salary)
+        VALUES (999, 'Jan', 'Recepcjonista', '2023-01-01', 'Y', 'M', 4000) ON CONFLICT DO NOTHING;
+
+        INSERT INTO receptionist (employee_id, shift)
+        VALUES (999, 'Morning') ON CONFLICT DO NOTHING;
+
+        v_receptionist_id := 999;
+    END IF;
+
+    SELECT COALESCE(MAX(transaction_client_id), 0) INTO v_max_trans_id FROM transaction_client;
+
+    FOR i IN 1..num_transactions LOOP
+        SELECT client_id INTO v_client_id FROM client ORDER BY RANDOM() LIMIT 1;
+        IF v_client_id IS NULL THEN
+            RETURN;
+        END IF;
+
+        v_random_date := DATE '2024-01-01' + (RANDOM() * (CURRENT_DATE - DATE '2024-01-01'))::INT;
+        v_max_trans_id := v_max_trans_id + 1;
+
+        INSERT INTO transaction_client (transaction_client_id, client_id, receptionist_employee_id, transaction_date)
+        VALUES (v_max_trans_id, v_client_id, v_receptionist_id, v_random_date) ON CONFLICT DO NOTHING;
+
+        v_num_articles := 1 + (RANDOM() * 2)::INT;
+
+        FOR j IN 1..v_num_articles LOOP
+            SELECT article_id INTO v_article_id FROM article ORDER BY RANDOM() LIMIT 1;
+            v_qty := 1 + (RANDOM() * 2)::INT;
+
+            INSERT INTO transaction_article (transaction_client_id, article_id, quantity)
+            VALUES (v_max_trans_id, v_article_id, v_qty) ON CONFLICT DO NOTHING;
+        END LOOP;
+    END LOOP;
+END;
+$$;
+
 
 CREATE OR REPLACE FUNCTION check_class_capacity()
 RETURNS TRIGGER AS $$
@@ -576,3 +696,110 @@ END;
 $$ LANGUAGE plpgsql;
 
 CALL schedule_recurring_class(1, 4);
+
+
+CREATE OR REPLACE FUNCTION check_and_update_stock()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_stock INTEGER;
+BEGIN
+    SELECT stock INTO v_stock FROM article WHERE article_id = NEW.article_id;
+
+    IF v_stock < NEW.quantity THEN
+        RAISE EXCEPTION 'Niewystarczająca ilość towaru w magazynie dla article_id %. Dostępne: %, Żądane: %', NEW.article_id, v_stock, NEW.quantity;
+    END IF;
+
+    UPDATE article SET stock = stock - NEW.quantity WHERE article_id = NEW.article_id;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_check_and_update_stock
+BEFORE INSERT ON transaction_article
+FOR EACH ROW EXECUTE FUNCTION check_and_update_stock();
+
+
+CREATE OR REPLACE FUNCTION get_transaction_total(p_transaction_client_id INT)
+RETURNS NUMERIC AS $$
+DECLARE
+    v_total NUMERIC := 0;
+BEGIN
+    SELECT COALESCE(SUM(ta.quantity * a.price), 0)
+    INTO v_total
+    FROM transaction_article ta
+    JOIN article a ON ta.article_id = a.article_id
+    WHERE ta.transaction_client_id = p_transaction_client_id;
+
+    RETURN v_total;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION get_client_total_spent(p_client_id INT)
+RETURNS NUMERIC AS $$
+DECLARE
+    v_total NUMERIC := 0;
+BEGIN
+    SELECT COALESCE(SUM(ta.quantity * a.price), 0)
+    INTO v_total
+    FROM transaction_client tc
+    JOIN transaction_article ta ON tc.transaction_client_id = ta.transaction_client_id
+    JOIN article a ON ta.article_id = a.article_id
+    WHERE tc.client_id = p_client_id;
+
+    RETURN v_total;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION restore_stock_on_delete_or_update()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_stock INTEGER;
+BEGIN
+    IF TG_OP = 'DELETE' THEN
+
+        UPDATE article SET stock = stock + OLD.quantity WHERE article_id = OLD.article_id;
+        RETURN OLD;
+    ELSIF TG_OP = 'UPDATE' THEN
+
+        IF OLD.article_id != NEW.article_id THEN
+
+            UPDATE article SET stock = stock + OLD.quantity WHERE article_id = OLD.article_id;
+
+            SELECT stock INTO v_stock FROM article WHERE article_id = NEW.article_id;
+            IF v_stock < NEW.quantity THEN
+                RAISE EXCEPTION 'Niewystarczająca ilość towaru w magazynie dla article_id %', NEW.article_id;
+            END IF;
+
+            UPDATE article SET stock = stock - NEW.quantity WHERE article_id = NEW.article_id;
+        ELSE
+
+            SELECT stock INTO v_stock FROM article WHERE article_id = NEW.article_id;
+
+            IF v_stock + OLD.quantity < NEW.quantity THEN
+                RAISE EXCEPTION 'Niewystarczająca ilość towaru przy aktualizacji. Brak w magazynie na taką zmianę.';
+            END IF;
+            UPDATE article SET stock = stock + OLD.quantity - NEW.quantity WHERE article_id = NEW.article_id;
+        END IF;
+        RETURN NEW;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_restore_stock
+BEFORE UPDATE OR DELETE ON transaction_article
+FOR EACH ROW EXECUTE FUNCTION restore_stock_on_delete_or_update();
+
+
+ALTER TABLE transaction_article ADD CONSTRAINT chk_transaction_article_quantity CHECK (quantity > 0);
+ALTER TABLE article ADD CONSTRAINT chk_article_price CHECK (price >= 0);
+ALTER TABLE article ADD CONSTRAINT chk_article_stock CHECK (stock >= 0);
+ALTER TABLE client ADD CONSTRAINT chk_client_birth_date CHECK (birth_date <= CURRENT_DATE);
+ALTER TABLE transaction_client ADD CONSTRAINT chk_transaction_client_date CHECK (transaction_date <= CURRENT_DATE);
+
+CALL generate_articles();
+CALL generate_more_clients(2000);
+CALL generate_stocktaking();
+CALL generate_transactions(5000);
