@@ -7,6 +7,10 @@ import ClassesView from "@/views/class-view";
 import RoomsView from "@/views/room-view";
 import RegistrationsView from "@/views/registration-view";
 import ClassTypesView from "@/views/class-type-view";
+import SubscriptionsView from "@/views/subscription-view";
+import EquipmentView from "@/views/equipment-view";
+import EntriesView from "@/views/entry-view";
+import SalesView from "@/views/sales-view";
 
 export default function App() {
   return (
@@ -27,6 +31,10 @@ export default function App() {
                 <Route path="/rooms" component={RoomsView}/>
                 <Route path="/registrations" component={RegistrationsView}/>
                 <Route path="/class-types" component={ClassTypesView}/>
+                <Route path="/subscriptions" component={SubscriptionsView}/>
+                <Route path="/equipment" component={EquipmentView}/>
+                <Route path="/entries" component={EntriesView}/>
+                <Route path="/sales" component={SalesView}/>
                 <Route>
                   <Redirect to="/classes" />
                 </Route>

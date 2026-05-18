@@ -1,5 +1,5 @@
 import { Link, useRoute } from "wouter";
-import { Dumbbell, DoorOpen, ClipboardList, LayoutDashboard, Layers } from "lucide-react";
+import { Dumbbell, DoorOpen, ClipboardList, LayoutDashboard, Layers, CreditCard, ToolCase, UserCheck } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -17,6 +17,12 @@ const navItems = [
   { title: "Rooms", url: "/rooms", icon: DoorOpen },
   { title: "Registrations", url: "/registrations", icon: ClipboardList },
   { title: "Class Types", url: "/class-types", icon: Layers },
+
+  {title: "Subscriptions", url: "/subscriptions", icon: CreditCard},
+  {title: "Equipment", url: "/equipment", icon: ToolCase},
+  {title: "Entries", url: "/entries", icon: DoorOpen},
+  {title: "Client sales", url: "/sales", icon: UserCheck},
+
 ];
 
 export function AppSidebar() {

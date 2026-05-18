@@ -431,9 +431,11 @@ ALTER TABLE weight
 
 INSERT INTO address (address_id, city, street, building_number, postal_code)
 VALUES (1, 'Warszawa', 'Puławska', 17, '02-515');
+VALUES (2, 'Warszawa', 'Polna', 18, '02-517');
 
 INSERT INTO gym (gym_id, name, established, address_id)
 VALUES (1, 'Zdrofit Europlex', '2024-01-01', 1);
+VALUES (2, 'Zdrofit Polna', '2023-01-01', 2);
 
 INSERT INTO client (client_id, name, surname, email, phone, birth_date) VALUES
     (201, 'Michał', 'Kras', 'm.kras@studia.pl', '555111222', '2004-05-10'),
@@ -915,6 +917,303 @@ END;
 $$;
 
 
+CREATE OR REPLACE PROCEDURE generate_subscriptions()
+LANGUAGE plpgsql AS $$
+BEGIN
+    INSERT INTO subscription (subscription_id, name, price, duration, entry_until) VALUES
+        (1,  'Monthly',         160.00, 30,  NULL),
+        (2,  'Yearly',          140.00, 365, NULL),
+        (3,  'Student',         120.00, 30,  NULL),
+        (4,  'Weekend',          80.00, 30,  NULL),
+        (5,  'Premium Monthly', 220.00, 30,  NULL),
+        (6,  'Premium Yearly',  200.00, 365, NULL),
+        (7,  'Trial',            40.00, 7,   NULL),
+        (8,  '2+2',       145.00, 90,  NULL),
+        (9,  '1+1',     150.00, 180, NULL),
+        (10, 'Family',          280.00, 30,  NULL)
+    ON CONFLICT (subscription_id) DO NOTHING;
+
+    RAISE NOTICE 'Subscriptions generated.';
+END;
+$$;
+
+CREATE OR REPLACE PROCEDURE generate_client_subscriptions(num INT DEFAULT 500)
+LANGUAGE plpgsql AS $$
+DECLARE
+    i                  INT;
+    v_max_id           INT;
+    v_client_id        INT;
+    v_subscription_id  INT;
+    v_duration         INT;
+    v_transaction_date DATE;
+    v_expiration_date  DATE;
+    v_paid_now         CHAR(1);
+BEGIN
+    SELECT COALESCE(MAX(client_subscription_id), 0) INTO v_max_id FROM client_subscription;
+
+    FOR i IN 1..num LOOP
+        SELECT client_id INTO v_client_id FROM client ORDER BY RANDOM() LIMIT 1;
+        SELECT subscription_id, duration INTO v_subscription_id, v_duration
+            FROM subscription ORDER BY RANDOM() LIMIT 1;
+
+         v_transaction_date := DATE '2023-01-01' + (RANDOM() * (CURRENT_DATE - DATE '2023-01-01'))::INT;
+        v_expiration_date  := v_transaction_date + v_duration;
+        v_paid_now         := CASE WHEN RANDOM() < 0.85 THEN 'Y' ELSE 'N' END;
+        v_max_id           := v_max_id + 1;
+
+        INSERT INTO client_subscription (
+            client_subscription_id,
+            client_id,
+            receptionist_employee_id,
+            subscription_id,
+            transaction_date,
+            paid_now,
+            expiration_date
+        ) VALUES (
+            v_max_id,
+            v_client_id,
+            NULL,
+            v_subscription_id,
+            v_transaction_date,
+            v_paid_now,
+            v_expiration_date
+        ) ON CONFLICT DO NOTHING;
+    END LOOP;
+
+    RAISE NOTICE 'Generated % client subscriptions.', num;
+END;
+$$;
+
+CREATE OR REPLACE PROCEDURE generate_entries(num INT DEFAULT 1000)
+LANGUAGE plpgsql AS $$
+DECLARE
+    i            INT;
+    v_max_id     INT;
+    v_client_id  INT;
+    v_gym_id     INT;
+    v_entry_time TIMESTAMP;
+    v_entry_date DATE;
+BEGIN
+    SELECT COALESCE(MAX(entry_id), 0) INTO v_max_id FROM entry;
+    SELECT gym_id INTO v_gym_id FROM gym LIMIT 1;
+
+    FOR i IN 1..num LOOP
+
+        v_entry_date := DATE '2023-01-01' + (RANDOM() * (CURRENT_DATE - DATE '2023-01-01'))::INT;
+
+        SELECT cs.client_id INTO v_client_id
+        FROM client_subscription cs
+        WHERE cs.paid_now = 'Y'
+          AND cs.transaction_date <= v_entry_date
+          AND cs.expiration_date  >= v_entry_date
+        ORDER BY RANDOM()
+        LIMIT 1;
+
+        IF v_client_id IS NULL THEN
+            CONTINUE;
+        END IF;
+
+        v_entry_time := v_entry_date + (INTERVAL '1 second' * (21600 + (RANDOM() * 43200)::INT));
+        v_max_id     := v_max_id + 1;
+
+        INSERT INTO entry (entry_id, client_id, entry_time, gym_id)
+        VALUES (v_max_id, v_client_id, v_entry_time, v_gym_id)
+        ON CONFLICT DO NOTHING;
+    END LOOP;
+
+    RAISE NOTICE 'Generated % entries.', num;
+END;
+$$;
+
+CREATE OR REPLACE PROCEDURE generate_equipment(num INT DEFAULT 50)
+LANGUAGE plpgsql AS $$
+DECLARE
+    i              INT;
+    v_max_id       INT;
+    v_serial       INT;
+    v_gym_id       INT;
+    v_date_prod    DATE;
+    v_date_bought  DATE;
+    v_eq_type      INT;  -- 1=weight, 2=machine, 3=accessory
+
+
+    weight_names   TEXT[]  := ARRAY['Olympic Bar','Dumbbell Set','Kettlebell','EZ Bar','Hex Bar','Trap Bar','Barbell'];
+    weight_types   TEXT[]  := ARRAY['barbell','dumbbell','kettlebell','plate'];
+    weight_mats    TEXT[]  := ARRAY['steel','cast iron','rubber','chrome'];
+    machine_names  TEXT[]  := ARRAY['Chest Press','Leg Press','Lat Pulldown','Cable Row','Shoulder Press','Leg Curl','Leg Extension','Smith Machine'];
+    machine_parts  TEXT[]  := ARRAY['chest','legs','back','shoulders','arms','core'];
+    acc_names      TEXT[]  := ARRAY['Resistance Band','Yoga Mat','Jump Rope','Ab Roller','Pull-up Bar','Foam Roller','Battle Rope'];
+    acc_types      TEXT[]  := ARRAY['resistance band','mat','rope','roller','bar'];
+    producers      TEXT[]  := ARRAY['Decathlon','Cezary Fitness','Hammer Strength','Kaja','Matrix','Adidas','EuroplexMachine'];
+    states         TEXT[]  := ARRAY['new','good','used','worn'];
+BEGIN
+    SELECT COALESCE(MAX(equipment_id), 0) INTO v_max_id FROM equipment;
+    SELECT gym_id INTO v_gym_id FROM gym LIMIT 1;
+
+    FOR i IN 1..num LOOP
+        v_max_id     := v_max_id + 1;
+        v_serial     := 10000 + v_max_id;
+        v_date_prod  := DATE '2018-01-01' + (RANDOM() * (DATE '2023-06-01' - DATE '2018-01-01'))::INT;
+        v_date_bought:= v_date_prod + (30 + (RANDOM() * 365)::INT);
+        v_eq_type    := 1 + (RANDOM() * 2.99)::INT;  -- 1, 2 lub 3
+
+        IF v_eq_type = 1 THEN
+            CALL add_weight(
+                v_max_id,
+                v_serial,
+                producers[1 + (RANDOM() * (array_length(producers,1)-1))::INT],
+                weight_names[1 + (RANDOM() * (array_length(weight_names,1)-1))::INT],
+                states[1 + (RANDOM() * (array_length(states,1)-1))::INT],
+                v_date_bought,
+                v_date_prod,
+                (100 + (RANDOM() * 200))::NUMERIC(10,2),
+                (2.5 + (RANDOM() * 47.5))::NUMERIC(10,2),
+                weight_types[1 + (RANDOM() * (array_length(weight_types,1)-1))::INT],
+                weight_mats[1 + (RANDOM() * (array_length(weight_mats,1)-1))::INT],
+                v_gym_id
+            );
+
+        ELSIF v_eq_type = 2 THEN
+            CALL add_machine(
+                v_max_id,
+                v_serial,
+                producers[1 + (RANDOM() * (array_length(producers,1)-1))::INT],
+                machine_names[1 + (RANDOM() * (array_length(machine_names,1)-1))::INT],
+                states[1 + (RANDOM() * (array_length(states,1)-1))::INT],
+                v_date_bought,
+                v_date_prod,
+                (2000 + (RANDOM() * 1500))::NUMERIC(10,2),
+                (50 + (RANDOM() * 250))::INT,
+                machine_parts[1 + (RANDOM() * (array_length(machine_parts,1)-1))::INT],
+                v_gym_id
+            );
+
+        ELSE
+            CALL add_accessory(
+                v_max_id,
+                v_serial,
+                producers[1 + (RANDOM() * (array_length(producers,1)-1))::INT],
+                acc_names[1 + (RANDOM() * (array_length(acc_names,1)-1))::INT],
+                states[1 + (RANDOM() * (array_length(states,1)-1))::INT],
+                v_date_bought,
+                v_date_prod,
+                (20 + (RANDOM() * 500))::NUMERIC(10,2),
+                acc_types[1 + (RANDOM() * (array_length(acc_types,1)-1))::INT],
+                v_gym_id
+            );
+        END IF;
+    END LOOP;
+
+    RAISE NOTICE 'Generated % equipment items.', num;
+END;
+$$;
+
+
+CREATE OR REPLACE FUNCTION trg_check_duplicate_active_subscriptions()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM client_subscription
+        WHERE client_id = NEW.client_id
+        AND subscription_id = NEW.subscription_id
+        AND paid_now = 'Y'
+        AND expiration_date >= CURRENT_DATE
+    ) THEN
+        RAISE EXCEPTION
+            'Client id=% already has an active subscription of type id=%',
+            NEW.client_id, NEW.subscription_id;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_check_duplicate_subscription
+BEFORE INSERT ON client_subscription
+FOR EACH ROW EXECUTE FUNCTION trg_check_duplicate_active_subscriptions();
+
+
+CREATE OR REPLACE FUNCTION check_entry_subscription()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM client_subscription
+        WHERE client_id       = NEW.client_id
+          AND paid_now        = 'Y'
+          AND transaction_date <= NEW.entry_time::DATE
+          AND expiration_date  >= NEW.entry_time::DATE
+    ) THEN
+        RAISE EXCEPTION
+            'Client id=% has no active paid subscription on %',
+            NEW.client_id, NEW.entry_time::DATE;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_check_entry_subscription
+BEFORE INSERT ON entry
+FOR EACH ROW EXECUTE FUNCTION check_entry_subscription();
+
+CREATE OR REPLACE FUNCTION check_entry_gym_hours()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_open  TIME;
+    v_close TIME;
+BEGIN
+    SELECT open_hour, close_hour INTO v_open, v_close
+    FROM gym WHERE gym_id = NEW.gym_id;
+
+    IF v_open IS NOT NULL AND v_close IS NOT NULL THEN
+        IF NEW.entry_time::TIME < v_open OR NEW.entry_time::TIME > v_close THEN
+            RAISE EXCEPTION
+                'Entry at % is outside gym opening hours (% - %)',
+                NEW.entry_time::TIME, v_open, v_close;
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_check_entry_gym_hours
+BEFORE INSERT ON entry
+FOR EACH ROW EXECUTE FUNCTION check_entry_gym_hours();
+
+CREATE OR REPLACE FUNCTION check_equipment_state_transition()
+RETURNS TRIGGER AS $$
+DECLARE
+    state_rank INT;
+    old_rank   INT;
+    new_rank   INT;
+BEGIN
+    WITH ranks(state, rank) AS (
+        VALUES ('new',1), ('good',2), ('used',3), ('worn',4)
+    )
+    SELECT rank INTO old_rank FROM ranks WHERE state = OLD.state;
+
+    WITH ranks(state, rank) AS (
+        VALUES ('new',1), ('good',2), ('used',3), ('worn',4)
+    )
+    SELECT rank INTO new_rank FROM ranks WHERE state = NEW.state;
+
+    IF new_rank < old_rank THEN
+        RAISE EXCEPTION
+            'Invalid state transition: cannot change equipment state from "%" to "%"',
+            OLD.state, NEW.state;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_check_equipment_state
+BEFORE UPDATE ON equipment
+FOR EACH ROW
+WHEN (OLD.state IS DISTINCT FROM NEW.state)
+EXECUTE FUNCTION check_equipment_state_transition();
+
+
+
 CREATE OR REPLACE FUNCTION check_class_capacity()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -1089,3 +1388,7 @@ CALL generate_articles();
 CALL generate_more_clients(2000);
 CALL generate_stocktaking();
 CALL generate_transactions(5000);
+CALL generate_subscriptions();
+CALL generate_client_subscriptions(500);
+CALL generate_entries(1000);
+CALL generate_equipment(50);
