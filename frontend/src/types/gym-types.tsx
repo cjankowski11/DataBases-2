@@ -40,3 +40,48 @@ export interface ApiResponse<T> {
   data: T;
   message: string;
 }
+
+export interface Subscription {
+  subscription_id: number;
+  name: string;
+  price: number;
+  duration: number;
+  entry_until?: string;
+
+}
+
+export interface ClientSubscription{
+  client_subscription_id: number;
+  client_id: number;
+  subscription_id: number;
+  transaction_date: string;
+  expiration_date: string;
+  paid_now:  'Y' | 'N';
+  client?: ClientClass;
+  subscription?:Subscription;
+}
+
+export interface Entry {
+  entry_id: number;
+  entry_time: string;
+  client_id: number;
+  gym_id: number;
+  client?: ClientClass;
+  gym?: GymClass;
+}
+
+export type EquipmentType = 'machine' | 'weight' | 'accessory';
+
+export interface Equipment {
+  equipment_id: number;
+  name: string;
+  producer: string;
+  state: string;
+  price: number;
+  equipment_type: EquipmentType;
+  gym_id: number;
+  gym?: GymClass;
+  weight?: number;
+  max_weight?: number;
+  bodypart_target?: string;
+}
