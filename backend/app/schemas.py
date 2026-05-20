@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional, Any, Union
+from typing import List, Optional, Any, Union, Literal
 from datetime import date, datetime, time
 from decimal import Decimal
 
@@ -78,6 +78,69 @@ class ClassRegistrationSchema(BaseModel):
 
     model_config = {"from_attributes": True}
 
+class EmployeeBase(BaseModel):
+    name: str
+    surname: str
+    gender: Literal["M", "F"]
+    date_employed: Optional[date] = None
+    salary: Optional[Decimal] = None
+
+
+class EmployeeCreate(EmployeeBase):
+    pass  
+
+class EmployeeUpdate(EmployeeBase):
+    name: Optional[str] = None
+    surname: Optional[str] = None
+    gender: Optional[Literal["M", "F"]] = None
+    is_employed: Optional[bool] = None
+
+class EmployeeSchema(EmployeeBase):
+    employee_id: int
+    is_employed: bool
+
+    model_config = {"from_attributes": True}
+
+class ReceptionistBase(BaseModel):
+    shift: Optional[str] = None
+
+class ReceptionistSchema(EmployeeSchema, ReceptionistBase):
+    model_config = {"from_attributes": True}
+
+class TrainerBase(BaseModel):
+    specialization: str
+    hourly_wage: Decimal
+
+class TrainerSchema(EmployeeSchema, TrainerBase):
+    model_config = {"from_attributes": True}
+
+class GymEmployeeBase(BaseModel):
+    gym_id: int
+    employee_id: int
+
+class GymEmployeeSchema(GymEmployeeBase):
+    model_config = {"from_attributes": True}
+
+class TrainerClassBase(BaseModel):
+    employee_id: int
+    class_id: int
+
+class TrainerClassSchema(TrainerClassBase):
+    model_config = {"from_attributes": True}
+
+class PersonalTrainingBase(BaseModel):
+    client_id: int
+    trainer_id: int
+    start_time: datetime
+    duration: int
+
+class PersonalTrainingSchema(PersonalTrainingBase):
+    personal_training_id: int
+    
+    client: Optional[ClientSchema] = None
+    trainer: Optional[TrainerSchema] = None
+
+    model_config = {"from_attributes": True}
 
 class ArticleBase(BaseModel):
     name: str

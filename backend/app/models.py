@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Date, ForeignKey, func, Numeric,CHAR, DateTime, Time
+
+from sqlalchemy import Column, Integer, String, Date, ForeignKey, func, Numeric,CHAR, DateTime, Time, Boolean
 from .database import Base
 from sqlalchemy.orm import relationship, column_property
 
@@ -56,6 +57,55 @@ class ClassRegistration(Base):
     client = relationship("Client")
     class_info = relationship("Class")
 
+class Employee(Base):
+    __tablename__ = "employee"
+    employee_id = Column(Integer, primary_key=True, nullable=False)
+    name = Column(String(32), nullable=False)
+    surname = Column(String(64), nullable=False)
+    date_employed = Column(Date, nullable=False)
+    is_employed = Column(Boolean, nullable=False, default=True)
+    # is_employed = Column(CHAR(1), nullable=False)
+    birth_date = Column(Date, nullable=True)
+    gender = Column(CHAR(1), nullable=False)
+    salary = Column(Numeric(10, 2), nullable=True)
+
+class Receptionist(Employee):
+    __tablename__ = "receptionist"
+    employee_id = Column(Integer, ForeignKey("employee.employee_id"), primary_key=True)
+    shift = Column(String(16), nullable=False)
+
+class GymEmployee(Base):
+    __tablename__ = "gym_employee"
+    gym_id = Column(Integer, ForeignKey("gym.gym_id"), primary_key=True)
+    employee_id = Column(Integer, ForeignKey("employee.employee_id"), primary_key=True)
+
+    gym = relationship("Gym")
+    employee = relationship("Employee")
+
+class Trainer(Employee):
+    __tablename__ = "trainer"
+    employee_id = Column(Integer, ForeignKey("employee.employee_id"), primary_key=True)
+    specialization = Column(String(64), nullable=False)
+    hourly_wage = Column(Numeric(10,2), nullable=False)
+
+class TrainerClass(Base):
+    __tablename__ = "trainer_class"
+    employee_id = Column(Integer, ForeignKey("employee.employee_id"), primary_key=True)
+    class_id = Column(Integer, ForeignKey("class.class_id"), primary_key=True)
+
+    employee = relationship("Employee")
+    Class = relationship("Class")
+
+class PersonalTraining(Base):
+    __tablename__ = "personaltraining"
+    personal_training_id = Column(Integer, primary_key=True)
+    client_id = Column(Integer, ForeignKey("client.client_id"), nullable=False)
+    start_time = Column(DateTime, nullable=False)
+    duration = Column(Integer, nullable=False)
+    trainer_id = Column(Integer, ForeignKey("employee.employee_id"), nullable=False)
+
+    client = relationship("Client")
+    trainer = relationship("Trainer")
 class Subscription(Base):
     __tablename__ = "subscription"
     subscription_id = Column(Integer, primary_key=True, index=True)

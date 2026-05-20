@@ -92,7 +92,7 @@ CREATE TABLE employee (
     name          VARCHAR(32) NOT NULL,
     surname       VARCHAR(64) NOT NULL,
     date_employed DATE NOT NULL,
-    is_employed   CHAR(1) NOT NULL,
+    is_employed   BOOLEAN NOT NULL,
     birth_date    DATE,
     gender        CHAR(1) NOT NULL,
     salary        NUMERIC(10, 2)
@@ -160,10 +160,9 @@ CREATE TABLE personal_training (
     client_id            INTEGER NOT NULL,
     start_time           TIMESTAMP NOT NULL,
     duration             INTEGER NOT NULL,
-    trainer_employee_id  INTEGER NOT NULL
+    employee_id  INTEGER NOT NULL
 );
 
-ALTER TABLE personal_training ADD CONSTRAINT personal_training_pk PRIMARY KEY ( personal_training_id );
 
 CREATE TABLE receptionist (
     employee_id INTEGER NOT NULL,
@@ -214,11 +213,11 @@ CREATE TABLE trainer (
 ALTER TABLE trainer ADD CONSTRAINT trainer_pk PRIMARY KEY ( employee_id );
 
 CREATE TABLE trainer_class (
-    trainer_employee_id INTEGER NOT NULL,
+    employee_id INTEGER NOT NULL,
     class_id            INTEGER NOT NULL
 );
 
-ALTER TABLE trainer_class ADD CONSTRAINT trainer_class_pk PRIMARY KEY ( trainer_employee_id, class_id );
+ALTER TABLE trainer_class ADD CONSTRAINT trainer_class_pk PRIMARY KEY ( employee_id, class_id );
 
 CREATE TABLE transaction_article (
     transaction_client_id INTEGER NOT NULL,
@@ -356,7 +355,7 @@ ALTER TABLE personal_training
 
 ALTER TABLE personal_training
     ADD CONSTRAINT personal_training_trainer_fk
-        FOREIGN KEY ( trainer_employee_id )
+        FOREIGN KEY ( employee_id ) 
             REFERENCES trainer ( employee_id )
             NOT DEFERRABLE;
 
@@ -398,7 +397,7 @@ ALTER TABLE trainer_class
 
 ALTER TABLE trainer_class
     ADD CONSTRAINT trainer_class_trainer_fk
-        FOREIGN KEY ( trainer_employee_id )
+        FOREIGN KEY ( employee_id )
             REFERENCES trainer ( employee_id )
             NOT DEFERRABLE;
 
@@ -779,6 +778,102 @@ CALL generate_rooms();
 CALL generate_classes(20);
 CALL generate_registrations();
 
+CREATE OR REPLACE PROCEDURE generate_employees(num_employees INT)
+LANGUAGE plpgsql AS $$
+DECLARE 
+    i INT;
+    v_start_id INT;
+    v_birth_date DATE;
+    v_date_employed DATE;
+    v_min_employment_date DATE;
+BEGIN
+    SELECT COALESCE(MAX(employee_id), 0) INTO v_start_id FROM employee;
+
+    FOR i IN 1..num_employees LOOP
+
+        v_birth_date := '1960-01-01'::DATE + (random() * ( (CURRENT_DATE - INTERVAL '18 years')::DATE - '1960-01-01'::DATE ))::INT;
+        v_min_employment_date := v_birth_date + INTERVAL '18 years';
+    
+        v_date_employed := v_min_employment_date + (random() * (CURRENT_DATE - v_min_employment_date))::INT;
+
+        INSERT INTO employee (
+            employee_id, 
+            name, 
+            surname, 
+            date_employed, 
+            is_employed, 
+            birth_date, 
+            gender, 
+            salary
+        )
+        VALUES (
+            v_start_id + i,                           
+            (SELECT initcap(string_agg(substring('abcdefghijklmnopqrstuvwxyz', (random() * 25 + 1)::int, 1), '')) 
+            FROM generate_series(1, (random() * 5 + 3)::int)),
+        
+            (SELECT initcap(string_agg(substring('abcdefghijklmnopqrstuvwxyz', (random() * 25 + 1)::int, 1), '')) 
+            FROM generate_series(1, (random() * 8 + 5)::int)),
+            
+            v_date_employed,
+            random() < 0.8,
+            v_birth_date,
+            CASE WHEN random() < 0.5 THEN 'M' ELSE 'F' END,
+            3500 + (random() * 6000)::NUMERIC(10,2)
+        )
+        ON CONFLICT (employee_id) DO NOTHING;
+    END LOOP;
+
+    RAISE NOTICE 'Generated % employees', num_employees;
+END;
+$$;
+
+
+CALL generate_employees(100);
+
+CREATE OR REPLACE PROCEDURE generate_receptionists(num_receptionists INT)
+LANGUAGE plpgsql AS $$
+DECLARE
+    v_last_id_before INT;
+    v_shifts TEXT[] := ARRAY['Morning', 'Afternoon', 'Night'];
+BEGIN
+    SELECT COALESCE(MAX(employee_id), 0) INTO v_last_id_before FROM employee;
+    CALL generate_employees(num_receptionists);
+
+    INSERT INTO receptionist (employee_id, shift)
+    SELECT 
+        employee_id, 
+        v_shifts[floor(random() * 3 + 1)]
+    FROM employee
+    WHERE employee_id > v_last_id_before;
+
+    RAISE NOTICE 'Added % receptionists to existing employees', num_receptionists;
+END;
+$$;
+
+CALL generate_receptionists(100);
+
+CREATE OR REPLACE PROCEDURE generate_trainers(num_trainers INT)
+LANGUAGE plpgsql AS $$
+DECLARE
+    v_last_id_before INT;
+    v_specs TEXT[] := ARRAY['Crossfit', 'Yoga', 'Pilates', 'Bodybuilding', 'Powerlifting', 'Zumba', 'Swimming'];
+BEGIN
+    SELECT COALESCE(MAX(employee_id), 0) INTO v_last_id_before FROM employee;
+    CALL generate_employees(num_trainers);
+
+    INSERT INTO trainer (employee_id, specialization, hourly_wage)
+    SELECT 
+        employee_id, 
+        v_specs[floor(random() * array_length(v_specs, 1) + 1)], 
+        (random() * (150 - 60) + 60)::NUMERIC(10,2)             
+    FROM employee
+    WHERE employee_id > v_last_id_before;
+
+    RAISE NOTICE 'Pomyślnie dodano % trenerów.', num_trainers;
+END;
+$$;
+
+CALL generate_trainers(100);
 CALL add_subscriptions(1,'Monthly',160.00,30);
 CALL add_subscriptions(2,'Yearly',140.00,43);
 CALL add_subscriptions(3,'Student', 120.00, 20);
@@ -794,7 +889,117 @@ CALL add_machine(2, 20001, 'Technogym', 'Chest Press', 'good','2023-01-15', '202
 CALL add_accessory(3, 30001, 'Europlex', 'band', 'new','2024-05-01', '2024-01-01', 45.00, 'resistance band', 1);
 
 
+CREATE OR REPLACE PROCEDURE generate_employees_gyms(p_count INT)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_gym_id INT;
+    v_emp_id INT;
+    v_inserted INT := 0;
+    v_attempts INT := 0;
+    v_max_attempts INT := p_count * 10; -- Zabezpieczenie przed nieskończoną pętlą
+BEGIN
+    WHILE v_inserted < p_count AND v_attempts < v_max_attempts LOOP
+        SELECT gym_id INTO v_gym_id FROM gym ORDER BY random() LIMIT 1;
+        SELECT employee_id INTO v_emp_id FROM employee ORDER BY random() LIMIT 1;
 
+        IF NOT EXISTS (
+            SELECT 1 FROM gym_employee 
+            WHERE gym_id = v_gym_id AND employee_id = v_emp_id
+        ) THEN
+            INSERT INTO gym_employee (gym_id, employee_id)
+            VALUES (v_gym_id, v_emp_id);
+            
+            v_inserted := v_inserted + 1;
+        END IF;
+
+        v_attempts := v_attempts + 1;
+    END LOOP;
+
+    RAISE NOTICE 'Pomyślnie powiązano % pracowników z siłowniami.', v_inserted;
+END;
+$$;
+
+CALL generate_employees_gyms(100);
+
+CREATE OR REPLACE PROCEDURE generate_trainers_classes(p_count INT)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_trainer_id INT;
+    v_class_id INT;
+    v_inserted INT := 0;
+    v_attempts INT := 0;
+    v_max_attempts INT := p_count * 10;
+BEGIN
+    WHILE v_inserted < p_count AND v_attempts < v_max_attempts LOOP
+        SELECT employee_id INTO v_trainer_id FROM trainer ORDER BY random() LIMIT 1;
+        SELECT class_id INTO v_class_id FROM class ORDER BY random() LIMIT 1;
+
+        IF NOT EXISTS (
+            SELECT 1 FROM trainer_class 
+            WHERE employee_id = v_trainer_id AND class_id = v_class_id
+        ) THEN
+            INSERT INTO trainer_class (employee_id, class_id)
+            VALUES (v_trainer_id, v_class_id);
+            
+            v_inserted := v_inserted + 1;
+        END IF;
+
+        v_attempts := v_attempts + 1;
+    END LOOP;
+
+    RAISE NOTICE 'Pomyślnie powiązano % trenerów z zajeciami.', v_inserted;
+END;
+$$;
+CALL generate_trainers_classes(30);
+
+CREATE OR REPLACE PROCEDURE generate_personal_training(p_count INT)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_client_id INT;
+    v_trainer_id INT;
+    v_start_time TIMESTAMP;
+    v_duration INT;
+    v_new_id INT;
+BEGIN
+    FOR i IN 1..p_count LOOP
+        
+        -- 1. Pobieramy losowego klienta
+        SELECT client_id INTO v_client_id 
+        FROM client 
+        ORDER BY random() 
+        LIMIT 1;
+
+        -- 2. Pobieramy losowego trenera (używamy Twojej tabeli 'trainer' i kolumny 'employee_id')
+        SELECT employee_id INTO v_trainer_id 
+        FROM trainer 
+        ORDER BY random() 
+        LIMIT 1;
+
+        -- 3. Losujemy czas startu (ostatnie 30 dni) i czas trwania (30-120 min)
+        v_start_time := NOW() - (random() * INTERVAL '30 days');
+        v_duration := 30 + floor(random() * 91);
+
+        -- 4. Generujemy nowe ID (skoro nie masz SERIAL/AUTO_INCREMENT)
+        SELECT COALESCE(MAX(personal_training_id), 0) + 1 INTO v_new_id 
+        FROM personal_training;
+
+        -- 5. Wstawiamy rekord do tabeli personal_training
+        INSERT INTO personal_training (personal_training_id, client_id, employee_id, start_time, duration)
+        VALUES (v_new_id, v_client_id, v_trainer_id, v_start_time, v_duration);
+
+    END LOOP;
+
+    RAISE NOTICE 'Pomyślnie wygenerowano % treningów personalnych.', p_count;
+END;
+$$;
+
+-- Wywołanie procedury (pamiętaj o SELECT dla funkcji, ale CALL dla procedur)
+CALL generate_personal_training(50);
+
+CALL generate_personal_training(50);
 
 -- TRIGGERS, FUNCTIONS AND OTHER PROCEDURES
 
