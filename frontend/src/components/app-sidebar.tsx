@@ -1,5 +1,5 @@
 import { Link, useRoute } from "wouter";
-import { Dumbbell, DoorOpen, ClipboardList, LayoutDashboard, Layers, CreditCard, ToolCase, UserCheck, Users, Package, ClipboardCheck, ShoppingCart, Users } from "lucide-react";
+import { Dumbbell, DoorOpen, ClipboardList, LayoutDashboard, Layers, CreditCard, ToolCase, UserCheck, Package, ClipboardCheck, ShoppingCart, Users } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,

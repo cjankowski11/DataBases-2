@@ -469,7 +469,7 @@ DECLARE
     r_client RECORD;
     v_class_id INT;
     v_random_date DATE;
-    v_reg_id INT := 1;
+    v_reg_id INT;
 BEGIN
     SELECT COALESCE(MAX(class_registration_id), 0) INTO v_reg_id FROM class_registration;
 
@@ -477,22 +477,37 @@ BEGIN
 
         SELECT class_id INTO v_class_id FROM class ORDER BY RANDOM() LIMIT 1;
 
-        v_random_date := DATE '2020-01-01' + (random() * (CURRENT_DATE - DATE '2020-01-01'))::INT;
-        v_reg_id := v_reg_id + 1;
+        IF v_class_id IS NULL THEN
+            CONTINUE;
+        END IF;
 
-        INSERT INTO class_registration (
-            class_registration_id,
-            client_id,
-            class_id,
-            registration_date
-        ) VALUES (
-            v_reg_id,
-            r_client.client_id,
-            v_class_id,
-            v_random_date
-        ) ON CONFLICT DO NOTHING;
+        v_random_date := DATE '2020-01-01' + (random() * (CURRENT_DATE - DATE '2020-01-01'))::INT;
+
+        BEGIN
+            INSERT INTO class_registration (
+                class_registration_id,
+                client_id,
+                class_id,
+                registration_date
+            ) VALUES (
+                v_reg_id + 1,
+                r_client.client_id,
+                v_class_id,
+                v_random_date
+            ) ON CONFLICT DO NOTHING;
+
+            v_reg_id := v_reg_id + 1;
+
+        EXCEPTION
+            WHEN raise_exception THEN
+                CONTINUE;
+            WHEN unique_violation THEN
+                CONTINUE;
+        END;
 
     END LOOP;
+
+    RAISE NOTICE 'Class registrations generation completed.';
 END;
 $$;
 
@@ -757,7 +772,6 @@ BEGIN
         END IF;
     END IF;
 
-    -- Zapis wejścia
     INSERT INTO entry (entry_id, client_id, entry_time, gym_id)
     VALUES (p_entry_id, p_client_id, p_entry_time, p_gym_id);
 
@@ -816,13 +830,6 @@ BEGIN
 END;
 $$;
 
-CALL generate_addresses();
-CALL generate_gyms();
-CALL generate_rooms();
-CALL generate_classes(20);
-CALL generate_registrations();
-CALL generate_sponsors();
-CALL generate_contracts();
 
 
 CREATE OR REPLACE PROCEDURE generate_employees(num_employees INT)
@@ -875,8 +882,6 @@ END;
 $$;
 
 
-CALL generate_employees(100);
-
 CREATE OR REPLACE PROCEDURE generate_receptionists(num_receptionists INT)
 LANGUAGE plpgsql AS $$
 DECLARE
@@ -897,7 +902,6 @@ BEGIN
 END;
 $$;
 
-CALL generate_receptionists(100);
 
 CREATE OR REPLACE PROCEDURE generate_trainers(num_trainers INT)
 LANGUAGE plpgsql AS $$
@@ -916,24 +920,10 @@ BEGIN
     FROM employee
     WHERE employee_id > v_last_id_before;
 
-    RAISE NOTICE 'Pomyślnie dodano % trenerów.', num_trainers;
+    RAISE NOTICE 'Generated % trainers.', num_trainers;
 END;
 $$;
 
-CALL generate_trainers(100);
-CALL add_subscriptions(1,'Monthly',160.00,30);
-CALL add_subscriptions(2,'Yearly',140.00,43);
-CALL add_subscriptions(3,'Student', 120.00, 20);
-
-CALL add_client_subscription(1, 201, 1, CURRENT_DATE, 'Y',NULL);
-CALL add_client_subscription(2, 202, 2, CURRENT_DATE, 'Y',NULL);
-
-CALL add_entry(1,201,1, CURRENT_TIMESTAMP - INTERVAL '2 hours');
-CALL add_entry(2,202,1, CURRENT_TIMESTAMP - INTERVAL '3 hours');
-
-CALL add_weight(1, 10001, 'Zdrofit', 'Olympic bar', 'new','2024-03-01', '2023-06-01', 1200.00, 20.0, 'barbell', 'steel', 1);
-CALL add_machine(2, 20001, 'Technogym', 'Chest Press', 'good','2023-01-15', '2022-09-01', 8500.00, 150, 'chest', 1);
-CALL add_accessory(3, 30001, 'Europlex', 'band', 'new','2024-05-01', '2024-01-01', 45.00, 'resistance band', 1);
 
 
 CREATE OR REPLACE PROCEDURE generate_employees_gyms(p_count INT)
@@ -944,7 +934,7 @@ DECLARE
     v_emp_id INT;
     v_inserted INT := 0;
     v_attempts INT := 0;
-    v_max_attempts INT := p_count * 10; -- Zabezpieczenie przed nieskończoną pętlą
+    v_max_attempts INT := p_count * 10;
 BEGIN
     WHILE v_inserted < p_count AND v_attempts < v_max_attempts LOOP
         SELECT gym_id INTO v_gym_id FROM gym ORDER BY random() LIMIT 1;
@@ -963,11 +953,10 @@ BEGIN
         v_attempts := v_attempts + 1;
     END LOOP;
 
-    RAISE NOTICE 'Pomyślnie powiązano % pracowników z siłowniami.', v_inserted;
+    RAISE NOTICE 'Connected % employees with gyms.', v_inserted;
 END;
 $$;
 
-CALL generate_employees_gyms(100);
 
 CREATE OR REPLACE PROCEDURE generate_trainers_classes(p_count INT)
 LANGUAGE plpgsql
@@ -996,10 +985,9 @@ BEGIN
         v_attempts := v_attempts + 1;
     END LOOP;
 
-    RAISE NOTICE 'Pomyślnie powiązano % trenerów z zajeciami.', v_inserted;
+    RAISE NOTICE 'Connected % trainers with classes.', v_inserted;
 END;
 $$;
-CALL generate_trainers_classes(30);
 
 CREATE OR REPLACE PROCEDURE generate_personal_training(p_count INT)
 LANGUAGE plpgsql
@@ -1025,7 +1013,10 @@ BEGIN
         ORDER BY random()
         LIMIT 1;
 
-        -- 3. Losujemy czas startu (ostatnie 30 dni) i czas trwania (30-120 min)
+        IF v_client_id IS NULL OR v_trainer_id IS NULL THEN
+            CONTINUE;
+        END IF;
+
         v_start_time := NOW() - (random() * INTERVAL '30 days');
         v_duration := 30 + floor(random() * 91);
 
@@ -1033,22 +1024,23 @@ BEGIN
         SELECT COALESCE(MAX(personal_training_id), 0) + 1 INTO v_new_id
         FROM personal_training;
 
-        -- 5. Wstawiamy rekord do tabeli personal_training
-        INSERT INTO personal_training (personal_training_id, client_id, employee_id, start_time, duration)
-        VALUES (v_new_id, v_client_id, v_trainer_id, v_start_time, v_duration);
+        BEGIN
+            INSERT INTO personal_training (personal_training_id, client_id, employee_id, start_time, duration)
+            VALUES (v_new_id, v_client_id, v_trainer_id, v_start_time, v_duration)
+            ON CONFLICT DO NOTHING;
+        EXCEPTION
+            WHEN OTHERS THEN
+                CONTINUE;
+        END;
 
     END LOOP;
 
-    RAISE NOTICE 'Pomyślnie wygenerowano % treningów personalnych.', p_count;
+    RAISE NOTICE 'Generated % personal trainings.', p_count;
 END;
 $$;
 
--- Wywołanie procedury (pamiętaj o SELECT dla funkcji, ale CALL dla procedur)
-CALL generate_personal_training(50);
 
-CALL generate_personal_training(50);
 
--- TRIGGERS, FUNCTIONS AND OTHER PROCEDURES
 
 CREATE OR REPLACE PROCEDURE generate_articles()
 LANGUAGE plpgsql AS $$
@@ -1239,7 +1231,8 @@ $$;
 CREATE OR REPLACE PROCEDURE generate_transactions(num_transactions INT)
 LANGUAGE plpgsql AS $$
 DECLARE
-    i INT;
+    v_inserted INT := 0;
+    v_attempts INT := 0;
     j INT;
     v_receptionist_id INT;
     v_client_id INT;
@@ -1248,6 +1241,7 @@ DECLARE
     v_max_trans_id INT;
     v_num_articles INT;
     v_qty INT;
+    v_success BOOLEAN;
 BEGIN
     SELECT employee_id INTO v_receptionist_id FROM receptionist LIMIT 1;
     IF v_receptionist_id IS NULL THEN
@@ -1262,28 +1256,55 @@ BEGIN
 
     SELECT COALESCE(MAX(transaction_client_id), 0) INTO v_max_trans_id FROM transaction_client;
 
-    FOR i IN 1..num_transactions LOOP
+    WHILE v_inserted < num_transactions AND v_attempts < (num_transactions * 10) LOOP
+        v_attempts := v_attempts + 1;
+
         SELECT client_id INTO v_client_id FROM client ORDER BY RANDOM() LIMIT 1;
         IF v_client_id IS NULL THEN
             RETURN;
         END IF;
 
         v_random_date := DATE '2024-01-01' + (RANDOM() * (CURRENT_DATE - DATE '2024-01-01'))::INT;
+
+        BEGIN
+            INSERT INTO transaction_client (transaction_client_id, client_id, receptionist_employee_id, transaction_date)
+            VALUES (v_max_trans_id + 1, v_client_id, v_receptionist_id, v_random_date) ON CONFLICT DO NOTHING;
+            v_success := TRUE;
+        EXCEPTION
+            WHEN OTHERS THEN
+                v_success := FALSE;
+        END;
+
+        IF NOT v_success THEN
+            CONTINUE;
+        END IF;
+
         v_max_trans_id := v_max_trans_id + 1;
-
-        INSERT INTO transaction_client (transaction_client_id, client_id, receptionist_employee_id, transaction_date)
-        VALUES (v_max_trans_id, v_client_id, v_receptionist_id, v_random_date) ON CONFLICT DO NOTHING;
-
         v_num_articles := 1 + (RANDOM() * 2)::INT;
 
         FOR j IN 1..v_num_articles LOOP
             SELECT article_id INTO v_article_id FROM article ORDER BY RANDOM() LIMIT 1;
             v_qty := 1 + (RANDOM() * 2)::INT;
 
-            INSERT INTO transaction_article (transaction_client_id, article_id, quantity)
-            VALUES (v_max_trans_id, v_article_id, v_qty) ON CONFLICT DO NOTHING;
+            IF v_article_id IS NOT NULL THEN
+                BEGIN
+                    INSERT INTO transaction_article (transaction_client_id, article_id, quantity)
+                    VALUES (v_max_trans_id, v_article_id, v_qty) ON CONFLICT DO NOTHING;
+                EXCEPTION
+                    WHEN raise_exception THEN
+                        NULL;
+                    WHEN check_violation THEN
+                        NULL;
+                    WHEN OTHERS THEN
+                        NULL;
+                END;
+            END IF;
         END LOOP;
+
+        v_inserted := v_inserted + 1;
     END LOOP;
+
+    RAISE NOTICE 'Generated % transactions.', v_inserted;
 END;
 $$;
 
@@ -1311,7 +1332,8 @@ $$;
 CREATE OR REPLACE PROCEDURE generate_client_subscriptions(num INT DEFAULT 500)
 LANGUAGE plpgsql AS $$
 DECLARE
-    i                  INT;
+    v_inserted_count   INT := 0;
+    v_attempts         INT := 0;
     v_max_id           INT;
     v_client_id        INT;
     v_subscription_id  INT;
@@ -1322,43 +1344,49 @@ DECLARE
 BEGIN
     SELECT COALESCE(MAX(client_subscription_id), 0) INTO v_max_id FROM client_subscription;
 
-    FOR i IN 1..num LOOP
+    WHILE v_inserted_count < num AND v_attempts < (num * 10) LOOP
+        v_attempts := v_attempts + 1;
+
         SELECT client_id INTO v_client_id FROM client ORDER BY RANDOM() LIMIT 1;
         SELECT subscription_id, duration INTO v_subscription_id, v_duration
             FROM subscription ORDER BY RANDOM() LIMIT 1;
 
-         v_transaction_date := DATE '2023-01-01' + (RANDOM() * (CURRENT_DATE - DATE '2023-01-01'))::INT;
+        v_transaction_date := CURRENT_DATE - (RANDOM() * 30)::INT;
         v_expiration_date  := v_transaction_date + v_duration;
-        v_paid_now         := CASE WHEN RANDOM() < 0.85 THEN 'Y' ELSE 'N' END;
-        v_max_id           := v_max_id + 1;
 
-        INSERT INTO client_subscription (
-            client_subscription_id,
-            client_id,
-            employee_id,
-            subscription_id,
-            transaction_date,
-            paid_now,
-            expiration_date
-        ) VALUES (
-            v_max_id,
-            v_client_id,
-            NULL,
-            v_subscription_id,
-            v_transaction_date,
-            v_paid_now,
-            v_expiration_date
-        ) ON CONFLICT DO NOTHING;
+        v_paid_now := 'Y';
+
+        BEGIN
+            INSERT INTO client_subscription (
+                client_subscription_id, client_id, employee_id,
+                subscription_id, transaction_date, paid_now, expiration_date
+            ) VALUES (
+                v_max_id + 1, v_client_id, NULL,
+                v_subscription_id, v_transaction_date, v_paid_now, v_expiration_date
+            );
+
+            v_max_id := v_max_id + 1;
+            v_inserted_count := v_inserted_count + 1;
+
+        EXCEPTION
+            WHEN raise_exception THEN
+                CONTINUE;
+            WHEN unique_violation THEN
+                CONTINUE;
+            WHEN OTHERS THEN
+                CONTINUE;
+        END;
     END LOOP;
 
-    RAISE NOTICE 'Generated % client subscriptions.', num;
+    RAISE NOTICE 'Generated % client subscriptions.', v_inserted_count;
 END;
 $$;
 
 CREATE OR REPLACE PROCEDURE generate_entries(num INT DEFAULT 1000)
 LANGUAGE plpgsql AS $$
 DECLARE
-    i            INT;
+    v_inserted   INT := 0;
+    v_attempts   INT := 0;
     v_max_id     INT;
     v_client_id  INT;
     v_gym_id     INT;
@@ -1368,8 +1396,13 @@ BEGIN
     SELECT COALESCE(MAX(entry_id), 0) INTO v_max_id FROM entry;
     SELECT gym_id INTO v_gym_id FROM gym LIMIT 1;
 
-    FOR i IN 1..num LOOP
+    IF v_gym_id IS NULL THEN
+        RAISE NOTICE 'No gyms found. Aborting entry generation.';
+        RETURN;
+    END IF;
 
+    WHILE v_inserted < num AND v_attempts < (num * 10) LOOP
+        v_attempts := v_attempts + 1;
         v_entry_date := DATE '2023-01-01' + (RANDOM() * (CURRENT_DATE - DATE '2023-01-01'))::INT;
 
         SELECT cs.client_id INTO v_client_id
@@ -1385,14 +1418,23 @@ BEGIN
         END IF;
 
         v_entry_time := v_entry_date + (INTERVAL '1 second' * (21600 + (RANDOM() * 43200)::INT));
-        v_max_id     := v_max_id + 1;
 
-        INSERT INTO entry (entry_id, client_id, entry_time, gym_id)
-        VALUES (v_max_id, v_client_id, v_entry_time, v_gym_id)
-        ON CONFLICT DO NOTHING;
+        BEGIN
+            INSERT INTO entry (entry_id, client_id, entry_time, gym_id)
+            VALUES (v_max_id + 1, v_client_id, v_entry_time, v_gym_id)
+            ON CONFLICT DO NOTHING;
+
+            v_max_id := v_max_id + 1;
+            v_inserted := v_inserted + 1;
+        EXCEPTION
+            WHEN raise_exception THEN
+                CONTINUE;
+            WHEN unique_violation THEN
+                CONTINUE;
+        END;
     END LOOP;
 
-    RAISE NOTICE 'Generated % entries.', num;
+    RAISE NOTICE 'Generated % entries.', v_inserted;
 END;
 $$;
 
@@ -1651,7 +1693,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CALL schedule_recurring_class(1, 4);
 
 
 CREATE OR REPLACE FUNCTION check_and_update_stock()
@@ -1793,12 +1834,25 @@ CREATE TRIGGER trg_check_overlapping_contracts
 BEFORE INSERT ON contract
 FOR EACH ROW EXECUTE FUNCTION check_overlapping_contracts();
 
+CALL generate_addresses();
+CALL generate_more_clients(2000);
+CALL generate_sponsors();
 CALL generate_subscriptions();
+CALL generate_articles();
+CALL generate_gyms();
+CALL generate_rooms();
+CALL generate_employees(100);
+CALL generate_receptionists(100);
+CALL generate_trainers(100);
+CALL generate_employees_gyms(100);
+CALL generate_equipment(50);
+CALL generate_stocktaking();
+CALL generate_contracts();
+CALL generate_transactions(1000);
 CALL generate_client_subscriptions(500);
 CALL generate_entries(1000);
-CALL generate_equipment(50);
-CALL generate_articles();
-CALL generate_more_clients(2000);
-CALL generate_stocktaking();
-CALL generate_transactions(5000);
+CALL generate_classes(400);
+CALL generate_trainers_classes(30);
+CALL generate_registrations();
+CALL generate_personal_training(50);
 
