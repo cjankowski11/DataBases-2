@@ -1,5 +1,5 @@
 import { Link, useRoute } from "wouter";
-import { Dumbbell, DoorOpen, ClipboardList, LayoutDashboard, Layers, CreditCard, ToolCase, UserCheck, Package, ClipboardCheck, ShoppingCart, Users } from "lucide-react";
+import { Building2, Dumbbell, DoorOpen, ClipboardList, LayoutDashboard, Layers, CreditCard, ToolCase, UserCheck, Users, MapPinHouse, CircleDollarSign, FileText,  Package, ClipboardCheck, ShoppingCart } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const navItems = [
+  { title: "Gyms", url: "/gyms", icon: Building2 },
   { title: "Classes", url: "/classes", icon: Dumbbell },
   { title: "Rooms", url: "/rooms", icon: DoorOpen },
   { title: "Registrations", url: "/registrations", icon: ClipboardList },
@@ -22,10 +23,14 @@ const navItems = [
   {title: "Equipment", url: "/equipment", icon: ToolCase},
   {title: "Entries", url: "/entries", icon: DoorOpen},
   {title: "Client sales", url: "/sales", icon: UserCheck},
+  {title: "Employees", url: "/employees", icon: Users},
+  {title: "Addresses", url: "/addresses", icon: MapPinHouse},
+  {title: "Sponsors", url: "/sponsors", icon: CircleDollarSign},
+  {title: "Contracts", url: "/contracts", icon: FileText},
   {title: "Clients", url: "/clients", icon: Users},
   {title: "Articles", url: "/articles", icon: Package},
   {title: "Stocktakings", url: "/stocktakings", icon: ClipboardCheck},
-  {title: "Transactions", url: "/transactions", icon: ShoppingCart},  {title: "Employees", url: "/employees", icon: Users},
+  {title: "Transactions", url: "/transactions", icon: ShoppingCart}
 
 ];
 
