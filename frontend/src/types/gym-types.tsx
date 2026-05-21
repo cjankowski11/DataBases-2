@@ -67,7 +67,7 @@ export interface Entry {
   client_id: number;
   gym_id: number;
   client?: ClientClass;
-  gym?: GymClass;
+  gym?: Gym;
 }
 
 export type EquipmentType = 'machine' | 'weight' | 'accessory';
@@ -80,7 +80,7 @@ export interface Equipment {
   price: number;
   equipment_type: EquipmentType;
   gym_id: number;
-  gym?: GymClass;
+  gym?: Gym;
   weight?: number;
   max_weight?: number;
   bodypart_target?: string;
@@ -133,4 +133,41 @@ export interface Employee {
   birth_date?: string;
   gender: 'M' | 'F';
   salary: number;
+}
+
+export interface Address {
+  address_id: number;
+  city: string;
+  street: string;
+  building_number: number;
+  postal_code: string;
+}
+
+export interface Gym {
+  gym_id: number;
+  name: string;
+  established: string;
+  email?: string;
+  phone?: string;
+  area?: number;
+  open_hour?: string;
+  close_hour?: string;
+  address_id: number;
+  address?: Address;
+}
+
+export interface Sponsor {
+  sponsor_id: number;
+  name: string;
+}
+
+export interface Contract {
+  contract_id: number;
+  gym_id: number;
+  sponsor_id: number;
+  payment: number;
+  contract_date: string;
+  expiration_date: string;
+  gym?: Gym;
+  sponsor?: Sponsor;
 }
