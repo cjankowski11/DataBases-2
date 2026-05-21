@@ -11,6 +11,7 @@ import SubscriptionsView from "@/views/subscription-view";
 import EquipmentView from "@/views/equipment-view";
 import EntriesView from "@/views/entry-view";
 import SalesView from "@/views/sales-view";
+import EmployeeView from "./views/employee-view";
 
 export default function App() {
   return (
@@ -35,6 +36,7 @@ export default function App() {
                 <Route path="/equipment" component={EquipmentView}/>
                 <Route path="/entries" component={EntriesView}/>
                 <Route path="/sales" component={SalesView}/>
+                <Route path="/employees" component={EmployeeView}/>
                 <Route>
                   <Redirect to="/classes" />
                 </Route>
