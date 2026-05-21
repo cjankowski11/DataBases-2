@@ -2,9 +2,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .database import engine, Base
 import asyncio
+
 from .routers import (rooms, classes, class_types, class_registrations,
                     addresses, gyms, contracts, sponsors,
-                    clients, articles, stocktakings, transactions)
+                    clients, articles, stocktakings, transactions,  subscriptions, equipment, entries,
+                    employees, personaltrainings, receptionists, trainers)
 
 app = FastAPI()
 
@@ -24,6 +26,13 @@ app.include_router(rooms.router)
 app.include_router(classes.router)
 app.include_router(class_types.router)
 app.include_router(class_registrations.router)
+app.include_router(employees.router)
+app.include_router(personaltrainings.router)
+app.include_router(receptionists.router)
+app.include_router(trainers.router)
+app.include_router(subscriptions.router)
+app.include_router(equipment.router)
+app.include_router(entries.router)
 
 app.include_router(clients.router)
 app.include_router(articles.router)
