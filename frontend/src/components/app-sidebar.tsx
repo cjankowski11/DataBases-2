@@ -23,9 +23,6 @@ const navItems = [
   {title: "Entries", url: "/entries", icon: DoorOpen},
   {title: "Client sales", url: "/sales", icon: UserCheck},
   {title: "Employees", url: "/employees", icon: Users},
-  {title: "Trainers", url: "/trainers", icon: Users},
-  {title: "Receptionists", url: "/receptionists", icon: Users},
-  {title: "Personal trainings", url: "/personaltrainings", icon: Users},
 
 ];
 
