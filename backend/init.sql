@@ -428,13 +428,6 @@ ALTER TABLE weight
 
 -- INSERTING DATA PROCEDURES
 
-INSERT INTO address (address_id, city, street, building_number, postal_code)
-VALUES (1, 'Warszawa', 'Puławska', 17, '02-515');
-VALUES (2, 'Warszawa', 'Polna', 18, '02-517');
-
-INSERT INTO gym (gym_id, name, established, address_id)
-VALUES (1, 'Zdrofit Europlex', '2024-01-01', 1);
-VALUES (2, 'Zdrofit Polna', '2023-01-01', 2);
 
 INSERT INTO client (client_id, name, surname, email, phone, birth_date) VALUES
     (201, 'Michał', 'Kras', 'm.kras@studia.pl', '555111222', '2004-05-10'),
@@ -774,9 +767,62 @@ END;
 $$;
 
 
+CREATE OR REPLACE PROCEDURE generate_addresses()
+LANGUAGE plpgsql AS $$
+BEGIN
+    INSERT INTO address (address_id, city, street, building_number, postal_code) VALUES
+        (1, 'Warsaw', 'Marszałkowska', 12, '00-001'),
+        (2, 'Krakow', 'Floriańska', 7, '31-019'),
+        (3, 'Gdansk', 'Dluga', 45, '80-831'),
+        (4, 'Wroclaw', 'Swidnicka', 18, '50-066')
+    ON CONFLICT DO NOTHING;
+END;
+$$;
+
+CREATE OR REPLACE PROCEDURE generate_gyms()
+LANGUAGE plpgsql AS $$
+BEGIN
+    INSERT INTO gym (gym_id, name, established, email, phone, area, open_hour, close_hour, address_id) VALUES
+        (1, 'FitZone Gym', '2015-03-12', 'contact@fitzone.com', '111111111', 60, '06:00:00', '22:00:00', 1),
+        (2, 'PowerHouse Fitness', '2018-07-25', 'info@powerhouse.pl', '222222222', 130, '05:30:00', '23:00:00', 2),
+        (3, 'Iron Temple', '2020-01-15', 'hello@irontemple.pl', '333333333', 200, '07:00:00', '21:30:00', 3),
+        (4, 'ActiveLife Club', '2012-09-05', 'office@activelife.pl', '444444444', 100, '06:30:00', '22:30:00', 4)
+    ON CONFLICT DO NOTHING;
+END;
+$$;
+
+CREATE OR REPLACE PROCEDURE generate_sponsors()
+LANGUAGE plpgsql AS $$
+BEGIN
+    INSERT INTO sponsor(sponsor_id, name) VALUES
+        (1, 'Gym Glamour'),
+        (2, 'SFD'),
+        (3, 'Aliness')
+    ON CONFLICT DO NOTHING;
+END;
+$$;
+
+CREATE OR REPLACE PROCEDURE generate_contracts()
+LANGUAGE plpgsql AS $$
+BEGIN
+    INSERT INTO contract(contract_id, gym_id, sponsor_id, payment, contract_date, expiration_date) VALUES
+        (1, 1, 1, 5000.00, '2024-01-01', '2025-01-01'),
+        (2, 1, 2, 3500.00, '2024-03-15', '2025-03-15'),
+        (3, 2, 2, 7000.00, '2023-06-01', '2026-06-01'),
+        (4, 2, 3, 4200.00, '2024-05-10', '2025-05-10'),
+        (5, 3, 1, 6000.00, '2024-02-20', '2025-02-20'),
+        (6, 4, 3, 3000.00, '2023-11-11', '2024-11-11')
+    ON CONFLICT DO NOTHING;
+END;
+$$;
+
+CALL generate_addresses();
+CALL generate_gyms();
 CALL generate_rooms();
 CALL generate_classes(20);
 CALL generate_registrations();
+CALL generate_sponsors();
+CALL generate_contracts();
 
 CREATE OR REPLACE PROCEDURE generate_employees(num_employees INT)
 LANGUAGE plpgsql AS $$
@@ -1589,11 +1635,50 @@ ALTER TABLE article ADD CONSTRAINT chk_article_stock CHECK (stock >= 0);
 ALTER TABLE client ADD CONSTRAINT chk_client_birth_date CHECK (birth_date <= CURRENT_DATE);
 ALTER TABLE transaction_client ADD CONSTRAINT chk_transaction_client_date CHECK (transaction_date <= CURRENT_DATE);
 
-CALL generate_articles();
-CALL generate_more_clients(2000);
-CALL generate_stocktaking();
-CALL generate_transactions(5000);
+
+CREATE OR REPLACE FUNCTION check_contract_dates_validity()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.expiration_date <= NEW.contract_date THEN
+        RAISE EXCEPTION 'Expiration date must be after contract date.';
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_check_contract_dates_validity
+BEFORE INSERT ON contract
+FOR EACH ROW EXECUTE FUNCTION check_contract_dates_validity();
+
+CREATE OR REPLACE FUNCTION check_overlapping_contracts()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM contract c
+        WHERE c.gym_id = NEW.gym_id
+          AND c.sponsor_id = NEW.sponsor_id
+          AND c.expiration_date > NEW.contract_date
+    ) THEN
+        RAISE EXCEPTION
+            'Overlapping contract exists for this gym and sponsor';
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_check_overlapping_contracts
+BEFORE INSERT ON contract
+FOR EACH ROW EXECUTE FUNCTION check_overlapping_contracts();
+
 CALL generate_subscriptions();
 CALL generate_client_subscriptions(500);
 CALL generate_entries(1000);
 CALL generate_equipment(50);
+CALL generate_articles();
+CALL generate_more_clients(2000);
+CALL generate_stocktaking();
+CALL generate_transactions(5000);
+
