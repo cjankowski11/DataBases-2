@@ -1,5 +1,5 @@
 import { ApiClient } from "./api-client";
-import type { GymClass, Room, Registration, ClassType, Subscription, Entry,Equipment, ClientSubscription, Client, Article, Stocktaking, TransactionClient } from "@/types/gym-types";
+import type { GymClass, Room, Registration, ClassType, Subscription, Entry,Equipment, ClientSubscription, Client, Article, Stocktaking, TransactionClient, Employee } from "@/types/gym-types";
 
 export const ClassService = new ApiClient<GymClass>("/classes/");
 export const RoomService = new ApiClient<Room>("/rooms/");
@@ -13,3 +13,4 @@ export const ClientService = new ApiClient<Client>("/clients/");
 export const ArticleService = new ApiClient<Article>("/articles/");
 export const StocktakingService = new ApiClient<Stocktaking>("/stocktakings/");
 export const TransactionService = new ApiClient<TransactionClient>("/transactions/");
+export const EmployeeService = new ApiClient<Employee>("/employees/");

@@ -15,6 +15,7 @@ import ClientsView from "@/views/client-view";
 import ArticlesView from "@/views/article-view";
 import StocktakingsView from "@/views/stocktaking-view";
 import TransactionsView from "@/views/transaction-view";
+import EmployeeView from "./views/employee-view";
 
 export default function App() {
   return (
@@ -43,6 +44,7 @@ export default function App() {
                 <Route path="/articles" component={ArticlesView}/>
                 <Route path="/stocktakings" component={StocktakingsView}/>
                 <Route path="/transactions" component={TransactionsView}/>
+                <Route path="/employees" component={EmployeeView}/>
                 <Route>
                   <Redirect to="/classes" />
                 </Route>

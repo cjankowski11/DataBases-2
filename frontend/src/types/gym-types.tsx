@@ -123,3 +123,14 @@ export interface TransactionClient {
   transaction_date: string;
   articles: TransactionArticle[];
 }
+
+export interface Employee {
+  employee_id: number;
+  name: string;
+  surname: string;
+  date_employed: string; // Format ISO: "YYYY-MM-DD"
+  is_employed: boolean;
+  birth_date?: string;
+  gender: 'M' | 'F';
+  salary: number;
+}
