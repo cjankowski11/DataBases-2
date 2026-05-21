@@ -52,7 +52,7 @@ export default function RegistrationsView() {
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
           <ClipboardList className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-bold tracking-tight">Class Schedule</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Registrations</h1>
         </div>
         <Button onClick={() => console.log("Open Create Modal")} className="gap-2">
             <Plus className="h-4 w-4" />

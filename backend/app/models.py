@@ -118,7 +118,7 @@ class ClientSubscription(Base):
     __tablename__ = "client_subscription"
     client_subscription_id = Column(Integer, primary_key=True, index=True)
     client_id = Column(Integer, ForeignKey("client.client_id"), nullable=False)
-    receptionist_employee_id = Column(Integer) #simple
+    employee_id = Column(Integer) #simple
     subscription_id = Column(Integer, ForeignKey("subscription.subscription_id"), nullable=False)
     transaction_date = Column(Date, nullable=False)
     paid_now = Column(CHAR(1), nullable=False)
