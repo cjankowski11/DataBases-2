@@ -67,7 +67,7 @@ ALTER TABLE client ADD CONSTRAINT client_pk PRIMARY KEY ( client_id );
 CREATE TABLE client_subscription (
     client_subscription_id   INTEGER NOT NULL,
     client_id                INTEGER NOT NULL,
-    receptionist_employee_id INTEGER,
+    employee_id INTEGER,
     subscription_id          INTEGER NOT NULL,
     transaction_date         DATE NOT NULL,
     paid_now                 CHAR(1) NOT NULL,
@@ -283,7 +283,7 @@ ALTER TABLE client_subscription
 
 ALTER TABLE client_subscription
     ADD CONSTRAINT client_subscription_receptionist_fk
-        FOREIGN KEY ( receptionist_employee_id )
+        FOREIGN KEY ( employee_id )
             REFERENCES receptionist ( employee_id )
             NOT DEFERRABLE;
 
@@ -710,7 +710,7 @@ BEGIN
     INSERT INTO client_subscription (
         client_subscription_id,
         client_id,
-        receptionist_employee_id,
+        employee_id,
         subscription_id,
         transaction_date,
         paid_now,
@@ -1169,7 +1169,7 @@ BEGIN
         INSERT INTO client_subscription (
             client_subscription_id,
             client_id,
-            receptionist_employee_id,
+            employee_id,
             subscription_id,
             transaction_date,
             paid_now,

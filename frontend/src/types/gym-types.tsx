@@ -85,3 +85,14 @@ export interface Equipment {
   max_weight?: number;
   bodypart_target?: string;
 }
+
+export interface Employee {
+  employee_id: number;
+  name: string;
+  surname: string;
+  date_employed: string; // Format ISO: "YYYY-MM-DD"
+  is_employed: boolean;
+  birth_date?: string;
+  gender: 'M' | 'F';
+  salary: number;
+}
