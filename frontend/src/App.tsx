@@ -11,6 +11,10 @@ import SubscriptionsView from "@/views/subscription-view";
 import EquipmentView from "@/views/equipment-view";
 import EntriesView from "@/views/entry-view";
 import SalesView from "@/views/sales-view";
+import ClientsView from "@/views/client-view";
+import ArticlesView from "@/views/article-view";
+import StocktakingsView from "@/views/stocktaking-view";
+import TransactionsView from "@/views/transaction-view";
 
 export default function App() {
   return (
@@ -35,6 +39,10 @@ export default function App() {
                 <Route path="/equipment" component={EquipmentView}/>
                 <Route path="/entries" component={EntriesView}/>
                 <Route path="/sales" component={SalesView}/>
+                <Route path="/clients" component={ClientsView}/>
+                <Route path="/articles" component={ArticlesView}/>
+                <Route path="/stocktakings" component={StocktakingsView}/>
+                <Route path="/transactions" component={TransactionsView}/>
                 <Route>
                   <Redirect to="/classes" />
                 </Route>

@@ -85,3 +85,41 @@ export interface Equipment {
   max_weight?: number;
   bodypart_target?: string;
 }
+
+export interface Client {
+  client_id: number;
+  name: string;
+  surname: string;
+  email: string;
+  phone: string;
+  birth_date?: string;
+}
+
+export interface Article {
+  article_id: number;
+  name: string;
+  price: number;
+  type: string;
+  stock: number;
+}
+
+export interface Stocktaking {
+  stocktaking_id: number;
+  gym_id: number;
+  stocktaking_date: string;
+}
+
+export interface TransactionArticle {
+  transaction_client_id: number;
+  article_id: number;
+  quantity?: number;
+  article?: Article;
+}
+
+export interface TransactionClient {
+  transaction_client_id: number;
+  client_id: number;
+  receptionist_employee_id: number;
+  transaction_date: string;
+  articles: TransactionArticle[];
+}

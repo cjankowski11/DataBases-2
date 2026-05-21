@@ -12,7 +12,7 @@ export class ApiClient<T> {
       const response = await fetch(`${BASE_URL}${this.endpoint}`);
       if (!response.ok) throw new Error(`Failed to fetch from ${this.endpoint}`);
       const result = await response.json();
-      return result.data;
+      return result.data !== undefined ? result.data : result;
     } catch (error) {
       console.error(`API Error [GET ${this.endpoint}]:`, error);
       throw error;
