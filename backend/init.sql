@@ -788,7 +788,8 @@ BEGIN
         (1, 'Warsaw', 'Marszałkowska', 12, '00-001'),
         (2, 'Krakow', 'Floriańska', 7, '31-019'),
         (3, 'Gdansk', 'Dluga', 45, '80-831'),
-        (4, 'Wroclaw', 'Swidnicka', 18, '50-066')
+        (4, 'Wroclaw', 'Swidnicka', 18, '50-066'),
+        (5, 'Warsaw', 'Gorczewska', 3, '05-082')
     ON CONFLICT DO NOTHING;
 END;
 $$;
