@@ -5,11 +5,13 @@ import type { Address } from "@/types/gym-types";
 import { Loader2, AlertCircle, MapPinHouse, Plus } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { useLocation } from "wouter";
 
 export default function AddressesView() {
   const [data, setData] = useState<Address[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -54,7 +56,7 @@ export default function AddressesView() {
           <MapPinHouse className="h-8 w-8 text-primary" />
           <h1 className="text-3xl font-bold tracking-tight">Addresses</h1>
         </div>
-        <Button onClick={() => console.log("Open Create Modal")} className="gap-2">
+        <Button onClick={() => setLocation("/addresses/new")} className="gap-2">
             <Plus className="h-4 w-4" />
             Create Address
         </Button>

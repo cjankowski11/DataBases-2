@@ -21,6 +21,7 @@ import ClientsView from "@/views/client-view";
 import ArticlesView from "@/views/article-view";
 import StocktakingsView from "@/views/stocktaking-view";
 import TransactionsView from "@/views/transaction-view";
+import AddressCreateView from "@/views/address-create-view";
 
 
 export default function App() {
@@ -56,6 +57,7 @@ export default function App() {
                 <Route path="/addresses" component={AddressesView}/>
                 <Route path="/sponsors" component={SponsorsView}/>
                 <Route path="/contracts" component={ContractsView}/>
+                <Route path="/addresses/new" component={AddressCreateView}/>
                 <Route>
                   <Redirect to="/classes" />
                 </Route>
