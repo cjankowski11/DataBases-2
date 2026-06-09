@@ -7,6 +7,17 @@ import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { TablePagination } from "./table-pagination"
 import { TableActions } from "./table-actions"
+import { EquipmentService } from "@/services/gym-service"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface EquipmentListViewProps {
   data: Equipment[]
@@ -28,8 +39,33 @@ const TYPE_LABELS: Record<string, string> = {
 export function EquipmentListView({ data }: EquipmentListViewProps) {
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
+  const [equipmentToDelete, setEquipmentToDelete] = useState<number | string | null>(null)
+
   const totalPages = Math.ceil(data.length / itemsPerPage)
   const paginatedData = data.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+
+  const handleDeleteConfirm = async () => {
+    if (!equipmentToDelete) return;
+
+    try {
+      console.log("Delete finalized for equipment ID: " + equipmentToDelete);
+      await EquipmentService.delete(equipmentToDelete);
+      window.location.reload();
+    } catch (error: any) {
+      let errorMessage = "An unexpected error occurred.";
+
+      if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      alert(`Deletion Failed:\n${errorMessage}`);
+      console.error("Failed to delete equipment:", error);
+    } finally {
+      setEquipmentToDelete(null);
+    }
+  };
 
   const getDetail = (eq: Equipment) => {
     if (eq.equipment_type === "weight" && eq.weight)
@@ -82,7 +118,7 @@ export function EquipmentListView({ data }: EquipmentListViewProps) {
                   <TableActions
                     label="Equipment Management"
                     onEdit={() => console.log("Edit " + eq.equipment_id)}
-                    onDelete={() => console.log("Delete " + eq.equipment_id)}
+                    onDelete={() => setEquipmentToDelete(eq.equipment_id)}
                   />
                 </TableCell>
               </TableRow>
@@ -101,6 +137,29 @@ export function EquipmentListView({ data }: EquipmentListViewProps) {
         totalPages={totalPages}
         onPageChange={setCurrentPage}
       />
+
+      <AlertDialog 
+        open={equipmentToDelete !== null} 
+        onOpenChange={(open) => { if (!open) setEquipmentToDelete(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Do you want to delete this equipment?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

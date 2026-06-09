@@ -87,7 +87,7 @@ class EmployeeBase(BaseModel):
 
 
 class EmployeeCreate(EmployeeBase):
-    pass  
+    pass
 
 class EmployeeUpdate(EmployeeBase):
     name: Optional[str] = None
@@ -136,7 +136,7 @@ class PersonalTrainingBase(BaseModel):
 
 class PersonalTrainingSchema(PersonalTrainingBase):
     personal_training_id: int
-    
+
     client: Optional[ClientSchema] = None
     trainer: Optional[TrainerSchema] = None
 
@@ -383,3 +383,56 @@ class AccessorySchema(EquipmentSchema):
     type: str
 
 EquipmentUnion = Union[WeightSchema, MachineSchema, AccessorySchema, EquipmentSchema]
+
+##Post
+
+class EquipmentCreate(BaseModel):
+
+    serial_number: int
+    gym_id: Optional[int] = None
+    producer: str
+    name: str
+    state: str
+    date_bought: date
+    date_produced: date
+    price: Decimal
+    equipment_type: str
+
+class WeightCreate(EquipmentCreate):
+    weight: Decimal
+    type: str
+    material: str
+
+class MachineCreate(EquipmentCreate):
+    max_weight: int
+    bodypart_target: str
+
+class AccessoryCreate(EquipmentCreate):
+    type: str
+
+
+class EntryCreate(BaseModel):
+
+    client_id: int
+    gym_id: int
+    entry_time: datetime
+
+class SubscriptionCreate(BaseModel):
+    name: str
+    price: Decimal
+    duration: int
+    entry_until: Optional[date] = None
+
+
+class ClientSubscriptionCreate(BaseModel):
+
+    client_id: int
+    receptionist_employee_id: Optional[int] = None
+    subscription_id: int
+    transaction_date: date
+    paid_now: str
+    expiration_date: date
+
+
+
+
