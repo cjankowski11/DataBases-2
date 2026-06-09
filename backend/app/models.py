@@ -131,7 +131,7 @@ class Entry(Base):
     __tablename__ = "entry"
     entry_id = Column(Integer, primary_key=True, index=True)
     client_id = Column(Integer, ForeignKey("client.client_id"), nullable=False)
-    entry_time = Column(DateTime, nullable=False)
+    entry_time = Column(DateTime(timezone=True), nullable=False)
     gym_id = Column(Integer, ForeignKey("gym.gym_id"), nullable=False)
 
     client = relationship("Client")
