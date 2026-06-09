@@ -834,7 +834,7 @@ $$;
 
 
 
-CREATE OR REPLACE PROCEDURE generate_employees(num_employees INT)
+CREATE OR REPLACE PROCEDURE generate_employees(num_employees INT, p_employee_type TEXT)
 LANGUAGE plpgsql AS $$
 DECLARE
     i INT;
@@ -844,12 +844,9 @@ DECLARE
     v_min_employment_date DATE;
 BEGIN
     SELECT COALESCE(MAX(employee_id), 0) INTO v_start_id FROM employee;
-
     FOR i IN 1..num_employees LOOP
-
         v_birth_date := '1960-01-01'::DATE + (random() * ( (CURRENT_DATE - INTERVAL '18 years')::DATE - '1960-01-01'::DATE ))::INT;
         v_min_employment_date := v_birth_date + INTERVAL '18 years';
-
         v_date_employed := v_min_employment_date + (random() * (CURRENT_DATE - v_min_employment_date))::INT;
 
         INSERT INTO employee (
@@ -861,27 +858,24 @@ BEGIN
             birth_date,
             gender,
             salary,
-            employee_type
+            employee_type 
         )
         VALUES (
             v_start_id + i,
             (SELECT initcap(string_agg(substring('abcdefghijklmnopqrstuvwxyz', (random() * 25 + 1)::int, 1), ''))
-            FROM generate_series(1, (random() * 5 + 3)::int)),
-
+             FROM generate_series(1, (random() * 5 + 3)::int)),
             (SELECT initcap(string_agg(substring('abcdefghijklmnopqrstuvwxyz', (random() * 25 + 1)::int, 1), ''))
-            FROM generate_series(1, (random() * 8 + 5)::int)),
-
+             FROM generate_series(1, (random() * 8 + 5)::int)),
             v_date_employed,
             random() < 0.8,
             v_birth_date,
             CASE WHEN random() < 0.5 THEN 'M' ELSE 'F' END,
-            3500 + (random() * 6000)::NUMERIC(10,2),
-            'EMPLOYEE'
-        )
-        ON CONFLICT (employee_id) DO NOTHING;
+            (3500 + (random() * 6000))::NUMERIC(10,2),
+            p_employee_type
+        );
     END LOOP;
 
-    RAISE NOTICE 'Generated % employees', num_employees;
+    RAISE NOTICE 'Generated % employees of type %', num_employees, p_employee_type;
 END;
 $$;
 
@@ -893,14 +887,15 @@ DECLARE
     v_shifts TEXT[] := ARRAY['Morning', 'Afternoon', 'Night'];
 BEGIN
     SELECT COALESCE(MAX(employee_id), 0) INTO v_last_id_before FROM employee;
-    CALL generate_employees(num_receptionists);
+
+    CALL generate_employees(num_receptionists, 'receptionist');
 
     INSERT INTO receptionist (employee_id, shift)
     SELECT
         employee_id,
         v_shifts[floor(random() * 3 + 1)]
     FROM employee
-    WHERE employee_id > v_last_id_before;
+    WHERE employee_id > v_last_id_before AND employee_type = 'receptionist';
 
     RAISE NOTICE 'Added % receptionists to existing employees', num_receptionists;
 END;
@@ -914,7 +909,8 @@ DECLARE
     v_specs TEXT[] := ARRAY['Crossfit', 'Yoga', 'Pilates', 'Bodybuilding', 'Powerlifting', 'Zumba', 'Swimming'];
 BEGIN
     SELECT COALESCE(MAX(employee_id), 0) INTO v_last_id_before FROM employee;
-    CALL generate_employees(num_trainers);
+    
+    CALL generate_employees(num_trainers, 'trainer');
 
     INSERT INTO trainer (employee_id, specialization, hourly_wage)
     SELECT
@@ -922,7 +918,7 @@ BEGIN
         v_specs[floor(random() * array_length(v_specs, 1) + 1)],
         (random() * (150 - 60) + 60)::NUMERIC(10,2)
     FROM employee
-    WHERE employee_id > v_last_id_before;
+    WHERE employee_id > v_last_id_before AND employee_type = 'trainer';
 
     RAISE NOTICE 'Generated % trainers.', num_trainers;
 END;
@@ -1845,7 +1841,7 @@ CALL generate_subscriptions();
 CALL generate_articles();
 CALL generate_gyms();
 CALL generate_rooms();
-CALL generate_employees(100);
+CALL generate_employees(100, 'employee');
 CALL generate_receptionists(100);
 CALL generate_trainers(100);
 CALL generate_employees_gyms(100);

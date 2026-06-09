@@ -6,11 +6,8 @@ import { Badge } from "@/components/ui/badge"
 import { useState } from "react"
 import { TablePagination } from "./table-pagination"
 import { TableActions } from "./table-actions"
-import { User, BabyIcon } from "lucide-react"
 
-interface EmployeeListViewProps {
-  data: Employee[]
-}
+
 
 interface EmployeeListViewProps {
   data: Employee[]
@@ -20,13 +17,10 @@ export function EmployeeListView({ data = [] }: EmployeeListViewProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // 1. Zawsze upewniamy się, że pracujemy na tablicy
   const safeData = Array.isArray(data) ? data : [];
 
-  // 2. Liczymy strony (używając safeData)
   const totalPages = Math.max(1, Math.ceil(safeData.length / itemsPerPage));
 
-  // 3. Tniemy dane do paginacji (używając safeData)
   const paginatedData = safeData.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
@@ -41,13 +35,13 @@ export function EmployeeListView({ data = [] }: EmployeeListViewProps) {
             <TableHead>Employee</TableHead>
             <TableHead>Gender</TableHead>
             <TableHead>Employment Date</TableHead>
+            <TableHead>Birth Date</TableHead>
             <TableHead>Salary</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right w-[100px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {/* 4. Sprawdzamy długość bezpiecznej tablicy */}
           {safeData.length > 0 ? (
             paginatedData.map((emp) => (
               <TableRow key={emp.employee_id}>
@@ -62,6 +56,9 @@ export function EmployeeListView({ data = [] }: EmployeeListViewProps) {
                 </TableCell>
                 <TableCell>
                   {emp.date_employed ? new Date(emp.date_employed).toLocaleDateString("pl-PL") : "—"}
+                </TableCell>
+                <TableCell>
+                  {emp.birth_date ? new Date(emp.birth_date).toLocaleDateString("pl-PL") : "—"}
                 </TableCell>
                 <TableCell>
                   {emp.salary ? `${emp.salary} PLN` : "—"}

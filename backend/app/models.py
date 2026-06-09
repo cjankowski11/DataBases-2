@@ -68,11 +68,20 @@ class Employee(Base):
     birth_date = Column(Date, nullable=True)
     gender = Column(CHAR(1), nullable=False)
     salary = Column(Numeric(10, 2), nullable=True)
+    employee_type = Column(String(32), nullable=False)
+    __mapper_args__ = {
+        "polymorphic_on": employee_type,
+        "polymorphic_identity": "employee",
+    }
+    
 
 class Receptionist(Employee):
     __tablename__ = "receptionist"
     employee_id = Column(Integer, ForeignKey("employee.employee_id"), primary_key=True)
     shift = Column(String(16), nullable=False)
+    __mapper_args__ = {
+        "polymorphic_identity": "receptionist",
+    }
 
 class GymEmployee(Base):
     __tablename__ = "gym_employee"
@@ -87,6 +96,9 @@ class Trainer(Employee):
     employee_id = Column(Integer, ForeignKey("employee.employee_id"), primary_key=True)
     specialization = Column(String(64), nullable=False)
     hourly_wage = Column(Numeric(10,2), nullable=False)
+    __mapper_args__ = {
+        "polymorphic_identity": "trainer",
+    }
 
 class TrainerClass(Base):
     __tablename__ = "trainer_class"

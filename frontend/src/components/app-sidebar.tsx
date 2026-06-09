@@ -24,8 +24,6 @@ const navItems = [
   {title: "Entries", url: "/entries", icon: DoorOpen},
   {title: "Client sales", url: "/sales", icon: UserCheck},
   {title: "Employees", url: "/employees", icon: Users},
-  {title: "Receptionists", url: "/receptionists", icon: Users},
-  {title: "Trainers", url: "/trainers", icon: Users},
   {title: "Addresses", url: "/addresses", icon: MapPinHouse},
   {title: "Sponsors", url: "/sponsors", icon: CircleDollarSign},
   {title: "Contracts", url: "/contracts", icon: FileText},

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { EmployeeService } from "@/services/gym-service";
 import { EmployeeListView } from "@/components/tables/employee-table";
+import { ReceptionistListView } from "@/components/tables/receptionist-table";
+import { TrainerListView } from "@/components/tables/trainer-table";
 import type { Employee } from "@/types/gym-types";
 import { Loader2, AlertCircle, Users, UserPlus } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -12,29 +14,30 @@ export default function EmployeeView() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("all");
-useEffect(() => {
-  const fetchData = async () => {
-    try {
-      setIsLoading(true);
-      const response = await EmployeeService.getAll();
-      
-      if (Array.isArray(response)) {
-        setData(response);
-      }
 
-      else {
-        console.error("Nieoczekiwana struktura danych:", response);
-        setData([]);
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await EmployeeService.getAll();
+        
+        if (response && Array.isArray(response.data)) {
+          setData(response.data);
+        } else if (Array.isArray(response)) {
+          setData(response);
+        } else {
+          console.error("Nieoczekiwana struktura danych:", response);
+          setData([]);
+        }
+      } catch (err) {
+        console.error("Błąd w useEffect:", err);
+        setError("Nie udało się pobrać pracowników.");
+      } finally {
+        setIsLoading(false);
       }
-    } catch (err) {
-      console.error("Błąd w useEffect:", err);
-      setError("Nie udało się pobrać pracowników.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  fetchData();
-}, []);
+    };
+    fetchData();
+  }, []);
 
   if (isLoading) {
     return (
@@ -55,10 +58,12 @@ useEffect(() => {
       </div>
     );
   }
+
   const filters = ["all", "receptionist", "trainer"] as const;
 
   const filtered =
-    filter === "all" ? data : data.filter((e) => e.equipment_type === filter);
+    filter === "all" ? data : data.filter((e) => e.employee_type === filter);
+
   return (
     <div className="p-8 space-y-6">
       <div className="flex justify-between items-center">
@@ -71,6 +76,7 @@ useEffect(() => {
           Add Employee
         </Button>
       </div>
+      
       <div className="flex gap-2">
         {filters.map((f) => (
           <Badge
@@ -81,13 +87,24 @@ useEffect(() => {
           >
             {f}
             <span className="ml-1 text-xs opacity-70">
-              ({f === "all" ? data.length : data.filter((e) => e.type === f).length})
+              ({f === "all" ? data.length : data.filter((e) => e.employee_type === f).length})
             </span>
           </Badge>
         ))}
       </div>
 
-      <EmployeeListView data={data} />
+      <div className="mt-4">
+      {(() => {
+        switch (filter) {
+          case "trainer":
+            return <TrainerListView data={filtered} />;
+          case "receptionist":
+            return <ReceptionistListView data={filtered} />;
+          default:
+            return <EmployeeListView data={filtered} />;
+        }
+      })()}
+    </div>
     </div>
   );
 }

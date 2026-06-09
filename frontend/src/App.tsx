@@ -12,7 +12,6 @@ import EquipmentView from "@/views/equipment-view";
 import EntriesView from "@/views/entry-view";
 import SalesView from "@/views/sales-view";
 import EmployeeView from "@/views/employee-view";
-import ReceptionistView from "./views/receptionist-view";
 import GymsView from "@/views/gym-view";
 import AddressesView from "@/views/address-view";
 import SponsorsView from "@/views/sponsor-view";
@@ -53,7 +52,6 @@ export default function App() {
                 <Route path="/stocktakings" component={StocktakingsView}/>
                 <Route path="/transactions" component={TransactionsView}/>
                 <Route path="/employees" component={EmployeeView}/>
-                <Route path="/receptionists" component={ReceptionistView}/>
                 <Route path="/addresses" component={AddressesView}/>
                 <Route path="/sponsors" component={SponsorsView}/>
                 <Route path="/contracts" component={ContractsView}/>

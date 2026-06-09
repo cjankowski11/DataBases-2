@@ -90,15 +90,17 @@ class EmployeeCreate(EmployeeBase):
     pass  
 
 class EmployeeUpdate(EmployeeBase):
-    name: Optional[str] = None
-    surname: Optional[str] = None
-    gender: Optional[Literal["M", "F"]] = None
-    is_employed: Optional[bool] = None
+    pass
+    # name: Optional[str] = None
+    # surname: Optional[str] = None
+    # gender: Optional[Literal["M", "F"]] = None
+    # is_employed: Optional[bool] = None
 
 class EmployeeSchema(EmployeeBase):
     employee_id: int
     is_employed: bool
-
+    employee_type: str
+    birth_date: date
     model_config = {"from_attributes": True}
 
 class ReceptionistBase(BaseModel):
@@ -106,13 +108,16 @@ class ReceptionistBase(BaseModel):
 
 class ReceptionistSchema(EmployeeSchema, ReceptionistBase):
     model_config = {"from_attributes": True}
-
+    
 class TrainerBase(BaseModel):
     specialization: str
     hourly_wage: Decimal
 
 class TrainerSchema(EmployeeSchema, TrainerBase):
     model_config = {"from_attributes": True}
+
+EmployeeUnion = Union[EmployeeSchema, ReceptionistSchema, TrainerSchema]
+
 
 class GymEmployeeBase(BaseModel):
     gym_id: int

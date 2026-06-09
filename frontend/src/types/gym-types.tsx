@@ -128,7 +128,7 @@ export interface Employee {
   employee_id: number;
   name: string;
   surname: string;
-  date_employed: string; // Format ISO: "YYYY-MM-DD"
+  date_employed: string;
   is_employed: boolean;
   birth_date?: string;
   gender: 'M' | 'F';
