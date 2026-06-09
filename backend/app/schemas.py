@@ -199,6 +199,63 @@ class TransactionClientSchema(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ArticleBase(BaseModel):
+    name: str
+    price: float
+    type: str
+    stock: int
+
+class ArticleCreate(ArticleBase):
+    pass
+
+class ArticleSchema(ArticleBase):
+    article_id: int
+
+    model_config = {"from_attributes": True}
+
+
+class StocktakingBase(BaseModel):
+    gym_id: int
+    stocktaking_date: date
+
+class StocktakingCreate(StocktakingBase):
+    pass
+
+class StocktakingSchema(StocktakingBase):
+    stocktaking_id: int
+
+    model_config = {"from_attributes": True}
+
+
+class TransactionArticleCreate(BaseModel):
+    article_id: int
+    quantity: int
+
+class TransactionArticleSchema(BaseModel):
+    transaction_client_id: int
+    article_id: int
+    quantity: Optional[int] = None
+    article: Optional[ArticleSchema] = None
+
+    model_config = {"from_attributes": True}
+
+
+class TransactionClientCreate(BaseModel):
+    client_id: int
+    receptionist_employee_id: int
+    transaction_date: date
+    articles: List[TransactionArticleCreate]
+
+class TransactionClientSchema(BaseModel):
+    transaction_client_id: int
+    client_id: int
+    receptionist_employee_id: int
+    transaction_date: date
+    articles: List[TransactionArticleSchema] = []
+
+    model_config = {"from_attributes": True}
+
+
 class AddressBase(BaseModel):
     city: str
     street: str

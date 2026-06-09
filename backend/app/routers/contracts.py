@@ -7,6 +7,7 @@ from datetime import date
 
 from ..database import get_db
 from ..models import Contract as ContractModel
+from ..models import Gym as GymModel
 from ..schemas import ContractSchema, ApiResponse
 from ..utils.error_handle import handle_error, NotFoundError
 
@@ -25,12 +26,14 @@ async def get_contracts(
     to_date: Optional[date] = Query(None)
 ):
     try:
-        query = (select(ContractModel).options(
-            joinedload(ContractModel.gym),
-            joinedload(ContractModel.sponsor)
+        query = (
+            select(ContractModel)
+            .options(
+                joinedload(ContractModel.gym).joinedload(GymModel.address), 
+                joinedload(ContractModel.sponsor)
             )
         )
-        
+                
         filters = []
         if gym_id:
             filters.append(ContractModel.gym_id == gym_id)

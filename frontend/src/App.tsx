@@ -11,7 +11,17 @@ import SubscriptionsView from "@/views/subscription-view";
 import EquipmentView from "@/views/equipment-view";
 import EntriesView from "@/views/entry-view";
 import SalesView from "@/views/sales-view";
-import EmployeeView from "./views/employee-view";
+import EmployeeView from "@/views/employee-view";
+import ReceptionistView from "./views/receptionist-view";
+import GymsView from "@/views/gym-view";
+import AddressesView from "@/views/address-view";
+import SponsorsView from "@/views/sponsor-view";
+import ContractsView from "@/views/contract-view";
+import ClientsView from "@/views/client-view";
+import ArticlesView from "@/views/article-view";
+import StocktakingsView from "@/views/stocktaking-view";
+import TransactionsView from "@/views/transaction-view";
+
 
 export default function App() {
   return (
@@ -28,6 +38,7 @@ export default function App() {
 
             <div className="mx-auto max-w-[1126px] min-h-[calc(100vh-3.5rem)] border-x border-border bg-card/30">
               <Switch>
+                <Route path="/gyms" component={GymsView} />
                 <Route path="/classes" component={ClassesView} />
                 <Route path="/rooms" component={RoomsView}/>
                 <Route path="/registrations" component={RegistrationsView}/>
@@ -36,7 +47,15 @@ export default function App() {
                 <Route path="/equipment" component={EquipmentView}/>
                 <Route path="/entries" component={EntriesView}/>
                 <Route path="/sales" component={SalesView}/>
+                <Route path="/clients" component={ClientsView}/>
+                <Route path="/articles" component={ArticlesView}/>
+                <Route path="/stocktakings" component={StocktakingsView}/>
+                <Route path="/transactions" component={TransactionsView}/>
                 <Route path="/employees" component={EmployeeView}/>
+                <Route path="/receptionists" component={ReceptionistView}/>
+                <Route path="/addresses" component={AddressesView}/>
+                <Route path="/sponsors" component={SponsorsView}/>
+                <Route path="/contracts" component={ContractsView}/>
                 <Route>
                   <Redirect to="/classes" />
                 </Route>
