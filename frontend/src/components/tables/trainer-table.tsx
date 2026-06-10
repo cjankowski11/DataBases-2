@@ -7,13 +7,12 @@ import { useState } from "react"
 import { TablePagination } from "./table-pagination"
 import { TableActions } from "./table-actions"
 
-
-
 interface TrainerListViewProps {
   data: Trainer[]
+  onDelete: (id: number | string) => void // <-- DODANE
 }
 
-export function TrainerListView({ data = [] }: TrainerListViewProps) {
+export function TrainerListView({ data = [], onDelete }: TrainerListViewProps) { // <-- DODANE onDelete
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -69,7 +68,7 @@ export function TrainerListView({ data = [] }: TrainerListViewProps) {
                   {emp.specialization}
                 </TableCell>
                 <TableCell>
-                  {emp.hourly_wage}
+                  {emp.hourly_wage ? `${emp.hourly_wage} PLN/h` : "—"}
                 </TableCell>
                 <TableCell>
                   <Badge variant={emp.is_employed ? "default" : "secondary"}>
@@ -78,17 +77,17 @@ export function TrainerListView({ data = [] }: TrainerListViewProps) {
                 </TableCell>
                 <TableCell className="text-right">
                   <TableActions
-                    label="Employee"
+                    label="Trainer" 
                     onEdit={() => console.log("Edit", emp.employee_id)}
-                    onDelete={() => console.log("Delete", emp.employee_id)}
+                    onDelete={() => onDelete(emp.employee_id)} 
                   />
                 </TableCell>
               </TableRow>
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                No employees found.
+              <TableCell colSpan={10} className="h-24 text-center text-muted-foreground">
+                No trainers found.
               </TableCell>
             </TableRow>
           )}

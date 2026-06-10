@@ -7,7 +7,6 @@ export const RegistrationService = new ApiClient<Registration>("/registrations/"
 export const ClassTypeService = new ApiClient<ClassType>("/class_types/");
 export const SubscriptionService = new ApiClient<Subscription>("/subscriptions/");
 export const EntryService = new ApiClient<Entry>("/entries/");
-export const ReceptionistService = new ApiClient<any>("/receptionists/");
 export const EquipmentService = Object.assign(new ApiClient<Equipment>("/equipment/"), {
   createWeight: async (data: any) => {
     const response = await fetch(`http://localhost:8000/equipment/weights`, {

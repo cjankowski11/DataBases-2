@@ -8,19 +8,17 @@ import { TablePagination } from "./table-pagination"
 import { TableActions } from "./table-actions"
 
 
-
 interface EmployeeListViewProps {
   data: Employee[]
+  onDelete: (id: number | string) => void 
 }
 
-export function EmployeeListView({ data = [] }: EmployeeListViewProps) {
+export function EmployeeListView({ data = [] , onDelete}: EmployeeListViewProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
   const safeData = Array.isArray(data) ? data : [];
-
   const totalPages = Math.max(1, Math.ceil(safeData.length / itemsPerPage));
-
   const paginatedData = safeData.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
@@ -69,17 +67,18 @@ export function EmployeeListView({ data = [] }: EmployeeListViewProps) {
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
+                  {/* 3. Przekazujemy prawdziwą funkcję onDelete zamiast console.log */}
                   <TableActions
                     label="Employee"
                     onEdit={() => console.log("Edit", emp.employee_id)}
-                    onDelete={() => console.log("Delete", emp.employee_id)}
+                    onDelete={() => onDelete(emp.employee_id)} // <-- ZMIENIONE
                   />
                 </TableCell>
               </TableRow>
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+              <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                 No employees found.
               </TableCell>
             </TableRow>

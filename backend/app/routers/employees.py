@@ -202,3 +202,27 @@ async def create_trainer(trainer_in: TrainerCreate, db: AsyncSession = Depends(g
     except Exception as e:
         await db.rollback()
         return handle_error(e, context="create_trainer")
+    
+@router.delete("/{employee_id}", response_model=ApiResponse)
+async def delete_employee(employee_id: int, db: AsyncSession = Depends(get_db)):
+    try:
+        poly = with_polymorphic(EmployeeModel, [TrainerModel, ReceptionistModel])
+        query = select(poly).where(poly.employee_id == employee_id)
+        
+        result = await db.execute(query)
+        employee = result.scalars().unique().one_or_none()
+
+        if not employee:
+            raise NotFoundError(resource="Employee", id=employee_id)
+
+        await db.delete(employee)
+        await db.commit()
+
+        return {
+            "status": "SUCCEEDED",
+            "data": None,
+            "message": f"Employee with ID {employee_id} (type: {employee.employee_type}) has been successfully deleted."
+        }
+    except Exception as e:
+        await db.rollback()
+        return handle_error(e, context="delete_employee")

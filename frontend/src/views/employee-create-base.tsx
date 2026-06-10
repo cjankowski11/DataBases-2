@@ -33,12 +33,12 @@ export function EmployeeFormBase({ title, submitUrl, children }: FormBaseProps) 
       
       const rawData = Object.fromEntries(new FormData(formElement));
       
-      // Budujemy czysty obiekt payloadu dopasowany pod Pydantica
+
       const finalPayload: any = {
         name: String(rawData.name),
         surname: String(rawData.surname),
         gender: rawData.gender, 
-        date_employed: rawData.date_employed, // Format "YYYY-MM-DD"
+        date_employed: rawData.date_employed, 
         
         birth_date: rawData.birth_date === "" ? null : rawData.birth_date,
         
@@ -61,11 +61,10 @@ export function EmployeeFormBase({ title, submitUrl, children }: FormBaseProps) 
       setLocation("/employees");
       
 
-      console.log(`Strzelam na endpoint: ${submitUrl} z payloadem:`, finalPayload);
+      console.log(` ${submitUrl} z payloadem:`, finalPayload);
       
       
       
-      // setLocation("/employees");
     } catch (err) {
       console.error("Błąd zapisu pracownika na frontendzie:", err);
     }
@@ -117,7 +116,6 @@ export function EmployeeFormBase({ title, submitUrl, children }: FormBaseProps) 
           </div>
         </div>
 
-        {/* Dynamiczne pola z widoków szczegółowych */}
         {children}
 
         <div className="flex justify-end gap-2 pt-4">

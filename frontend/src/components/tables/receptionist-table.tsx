@@ -7,13 +7,12 @@ import { useState } from "react"
 import { TablePagination } from "./table-pagination"
 import { TableActions } from "./table-actions"
 
-
-
 interface ReceptionistListViewProps {
   data: Receptionist[]
+  onDelete: (id: number | string) => void 
 }
 
-export function ReceptionistListView({ data = [] }: ReceptionistListViewProps) {
+export function ReceptionistListView({ data = [], onDelete }: ReceptionistListViewProps) { 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -74,17 +73,17 @@ export function ReceptionistListView({ data = [] }: ReceptionistListViewProps) {
                 </TableCell>
                 <TableCell className="text-right">
                   <TableActions
-                    label="Employee"
+                    label="Receptionist"
                     onEdit={() => console.log("Edit", emp.employee_id)}
-                    onDelete={() => console.log("Delete", emp.employee_id)}
+                    onDelete={() => onDelete(emp.employee_id)} 
                   />
                 </TableCell>
               </TableRow>
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                No employees found.
+              <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                No receptionists found.
               </TableCell>
             </TableRow>
           )}
