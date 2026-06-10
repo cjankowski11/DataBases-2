@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { RegistrationService } from "@/services/gym-service";
 import type { Registration } from "@/types/gym-types";
-import { Loader2, AlertCircle, ClipboardList, Plus, CheckCircle, XCircle } from "lucide-react";
+import { Loader2, AlertCircle, ClipboardList, Plus, CheckCircle, XCircle, Calendar, Filter, X } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { RegistrationListView } from "@/components/tables/registration-table";
 import { Button } from "@/components/ui/button";
@@ -26,10 +26,21 @@ export default function RegistrationsView() {
   const [deletingRegistrationId, setDeletingRegistrationId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
+  const [appliedStartDate, setAppliedStartDate] = useState<string>("");
+  const [appliedEndDate, setAppliedEndDate] = useState<string>("");
+
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const registrations = await RegistrationService.getAll();
+      const params: Record<string, string> = {};
+      if (appliedStartDate) params.start_date = appliedStartDate;
+      if (appliedEndDate) params.end_date = appliedEndDate;
+
+      const registrations = await RegistrationService.getAll(
+        Object.keys(params).length > 0 ? params : undefined
+      );
       setData(registrations);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load registrations");
@@ -40,7 +51,7 @@ export default function RegistrationsView() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [appliedStartDate, appliedEndDate]);
 
   const handleEdit = (registrationId: number) => {
     setEditingRegistrationId(registrationId);
@@ -61,7 +72,6 @@ export default function RegistrationsView() {
       await fetchData();
       setDeletingRegistrationId(null);
 
-      // Clear success message after 5 seconds
       setTimeout(() => {
         setSuccessMessage(null);
       }, 5000);
@@ -99,6 +109,18 @@ export default function RegistrationsView() {
     }, 300);
   };
 
+  const clearFilters = () => {
+    setStartDate("");
+    setEndDate("");
+    setAppliedStartDate("");
+    setAppliedEndDate("");
+  };
+
+  const applyFilters = () => {
+    setAppliedStartDate(startDate);
+    setAppliedEndDate(endDate);
+  };
+
   const isEditing = editingRegistrationId !== null;
   const registrationToDelete = deletingRegistrationId
     ? data.find(r => r.class_registration_id === deletingRegistrationId)
@@ -126,7 +148,6 @@ export default function RegistrationsView() {
 
   return (
     <div className="p-8 space-y-6">
-      {/* Success Message Alert */}
       {successMessage && (
         <Alert className="border-green-500 bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-300">
           <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
@@ -135,7 +156,6 @@ export default function RegistrationsView() {
         </Alert>
       )}
 
-      {/* Error Message Alert */}
       {error && (
         <Alert variant="destructive">
           <XCircle className="h-4 w-4" />
@@ -159,6 +179,32 @@ export default function RegistrationsView() {
           <Plus className="h-4 w-4" />
           Add Registration
         </Button>
+      </div>
+
+      {/* Date Filters */}
+      <div className="flex gap-4 items-end bg-muted/50 p-4 rounded-lg">
+        <div className="space-y-2">
+          <p className="text-sm font-medium">From</p>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+          />
+        </div>
+        <div className="space-y-2">
+          <p className="text-sm font-medium">To</p>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+          />
+        </div>
+        <Button onClick={applyFilters} size="sm">Apply</Button>
+        {(appliedStartDate || appliedEndDate) && (
+          <Button variant="ghost" size="sm" onClick={clearFilters}>Clear</Button>
+        )}
       </div>
 
       <RegistrationListView
