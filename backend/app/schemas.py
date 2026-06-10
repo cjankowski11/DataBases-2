@@ -31,23 +31,37 @@ class RoomCreate(RoomBase):
 class RoomSchema(RoomBase):
     room_id: int
 
-
     model_config = {"from_attributes": True}
 
-class ClassTypeSchema(BaseModel):
-    class_type_id: int
+class RoomUpdate(BaseModel):
+    name: Optional[str] = None
+    gym_id: Optional[int] = None
+
+class ClassTypeBase(BaseModel):
     name: str
     difficulty: int
 
+class ClassTypeSchema(ClassTypeBase):
+    class_type_id: int
     model_config = {"from_attributes": True}
 
-class ClassSchema(BaseModel):
-    class_id: int
+class ClassTypeCreate(ClassTypeBase):
+    pass
+
+class ClassTypeUpdate(BaseModel):
+    name: Optional[str] = None
+    difficulty: Optional[int] = None
+
+class ClassBase(BaseModel):
     class_date: date
     class_type_id: int
     duration: int
     capacity: int
     room_id: int
+
+class ClassSchema(ClassBase):
+    class_id: int
+
     occupancy_pct: float = 0.0
 
     class_type: Optional[ClassTypeSchema] = None
@@ -55,6 +69,15 @@ class ClassSchema(BaseModel):
 
     model_config = {"from_attributes": True}
 
+class ClassCreate(ClassBase):
+    pass
+
+class ClassUpdate(BaseModel):
+    class_date: Optional[date] = None
+    class_type_id: Optional[int] = None
+    duration: Optional[int] = None
+    capacity: Optional[int] = None
+    room_id: Optional[int] = None
 
 class ClientSchema(BaseModel):
     client_id: int
@@ -66,17 +89,26 @@ class ClientSchema(BaseModel):
 
     model_config = {"from_attributes": True}
 
-
-class ClassRegistrationSchema(BaseModel):
-    class_registration_id: int
+class ClassRegistrationBase(BaseModel):
     client_id: int
     class_id: int
     registration_date: date
+
+class ClassRegistrationSchema(ClassRegistrationBase):
+    class_registration_id: int
 
     client: Optional[ClientSchema] = None
     class_info: Optional[ClassSchema] = None
 
     model_config = {"from_attributes": True}
+
+class ClassRegistrationCreate(ClassRegistrationBase):
+    pass
+
+class ClassRegistrationUpdate(BaseModel):
+    client_id: Optional[int] = None
+    class_id: Optional[int] = None
+    registration_date: Optional[date] = None
 
 class EmployeeBase(BaseModel):
     name: str

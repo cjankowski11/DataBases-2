@@ -2,7 +2,7 @@
 from fastapi import HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 import logging
 from ..schemas import ApiResponse
 
@@ -16,6 +16,7 @@ class BadRequestError(Exception):
     def __init__(self, message: str):
         self.message = message
         super().__init__(self.message)
+
 
 
 def handle_error(e: Exception, context: str = "") -> JSONResponse:
@@ -60,8 +61,33 @@ def handle_error(e: Exception, context: str = "") -> JSONResponse:
         )
     elif isinstance(e, SQLAlchemyError):
         error_msg = str(e.orig) if hasattr(e, 'orig') else str(e)
-        
-        if "has no active paid subscription" in error_msg:
+        if "violates foreign key constraint" in error_msg:
+            if "class_registration" in error_msg:
+                return JSONResponse(
+                    status_code=409,
+                    content=ApiResponse(
+                        status="FAILED",
+                        message="Cannot delete this class because it has active client registrations. Please remove registrations first."
+                    ).model_dump()
+                )
+
+            return JSONResponse(
+                status_code=409,
+                content=ApiResponse(
+                    status="FAILED",
+                    message="Cannot delete this record because it is referenced by other data."
+                ).model_dump()
+            )
+        elif "Class is full!" in error_msg:
+            logger.warning("%sClass capacity exceeded: %s", prefix, error_msg)
+            return JSONResponse(
+                status_code=409,
+                content=ApiResponse(
+                    status="FAILED",
+                    message="Cannot register: The class has already reached its maximum capacity."
+                ).model_dump()
+            )
+        elif "has no active paid subscription" in error_msg:
             return JSONResponse(
                 status_code=403,
                 content=ApiResponse(
@@ -77,15 +103,16 @@ def handle_error(e: Exception, context: str = "") -> JSONResponse:
                     message="Gym is closed during these hours."
                 ).model_dump()
             )
+        else:
+            logger.error("%sDatabase error: %s", prefix, str(e))
+            return JSONResponse(
+                status_code=503,
+                content=ApiResponse(
+                    status="FAILED",
+                    message="Database error: unable to complete the request. Please try again later."
+                ).model_dump()
+            )
 
-        logger.error("%sDatabase error: %s", prefix, str(e))
-        return JSONResponse(
-            status_code=503,
-            content=ApiResponse(
-                status="FAILED",
-                message="Database error: unable to complete the request. Please try again later."
-            ).model_dump()
-        )
     else:
         logger.exception("%sUnexpected error: %s", prefix, str(e))
         return JSONResponse(
