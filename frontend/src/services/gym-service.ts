@@ -7,7 +7,33 @@ export const RegistrationService = new ApiClient<Registration>("/registrations/"
 export const ClassTypeService = new ApiClient<ClassType>("/class_types/");
 export const SubscriptionService = new ApiClient<Subscription>("/subscriptions/");
 export const EntryService = new ApiClient<Entry>("/entries/");
-export const EquipmentService = new ApiClient<Equipment>("/equipment/");
+export const ReceptionistService = new ApiClient<any>("/receptionists/");
+export const EquipmentService = Object.assign(new ApiClient<Equipment>("/equipment/"), {
+  createWeight: async (data: any) => {
+    const response = await fetch(`http://localhost:8000/equipment/weights`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    return response.json();
+  },
+  createMachine: async (data: any) => {
+    const response = await fetch(`http://localhost:8000/equipment/machines`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    return response.json();
+  },
+  createAccessory: async (data: any) => {
+    const response = await fetch(`http://localhost:8000/equipment/accessories`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    return response.json();
+  },
+});
 export const ClientSubscriptionService = new ApiClient<ClientSubscription>("/subscriptions/client-subscriptions/");
 export const EmployeeService = new ApiClient<Employee>("/employees/");
 export const ReceptionistService = new ApiClient<Receptionist>("/employees/receptionists/");

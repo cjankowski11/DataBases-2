@@ -13,7 +13,13 @@ import { TablePagination } from "./table-pagination"
 
 import { TableActions } from "./table-actions";
 
-export function ClassTypeListView({ data }: { data: ClassType[] }) {
+interface ClassTypeListViewProps {
+  data: ClassType[]
+  onEdit: (classTypeId: number) => void;
+  onDelete: (classTypeId: number) => void;
+}
+
+export function ClassTypeListView({ data, onEdit, onDelete }: ClassTypeListViewProps) {
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
 
@@ -53,8 +59,8 @@ export function ClassTypeListView({ data }: { data: ClassType[] }) {
                 <TableCell className="text-right">
                   <TableActions
                     label="Class Type Management"
-                    onEdit={() => console.log("Edit " + ct.class_type_id)}
-                    onDelete={() => console.log("Delete " + ct.class_type_id)}
+                    onEdit={() => onEdit(ct.class_type_id)}
+                    onDelete={() => onDelete(ct.class_type_id)}
                   />
                 </TableCell>
               </TableRow>

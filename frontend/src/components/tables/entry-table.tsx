@@ -6,6 +6,17 @@ import { Badge } from "@/components/ui/badge"
 import { useState } from "react"
 import { TablePagination } from "./table-pagination"
 import { TableActions } from "./table-actions"
+import { EntryService } from "@/services/gym-service"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface EntryListViewProps {
   data: Entry[]
@@ -14,8 +25,33 @@ interface EntryListViewProps {
 export function EntryListView({ data }: EntryListViewProps) {
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
+  const [entryToDelete, setEntryToDelete] = useState<number | string | null>(null)
+
   const totalPages = Math.ceil(data.length / itemsPerPage)
   const paginatedData = data.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+
+  const handleDeleteConfirm = async () => {
+    if (!entryToDelete) return;
+
+    try {
+      console.log("Delete finalized for entry ID: " + entryToDelete);
+      await EntryService.delete(entryToDelete);
+      window.location.reload();
+    } catch (error: any) {
+      let errorMessage = "An unexpected error occurred.";
+
+      if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      alert(`Deletion Failed:\n${errorMessage}`);
+      console.error("Failed to delete entry:", error);
+    } finally {
+      setEntryToDelete(null);
+    }
+  };
 
   const formatDateTime = (iso: string) => {
     const d = new Date(iso)
@@ -70,7 +106,7 @@ export function EntryListView({ data }: EntryListViewProps) {
                     <TableActions
                       label="Entry Management"
                       onEdit={() => console.log("Edit " + e.entry_id)}
-                      onDelete={() => console.log("Delete " + e.entry_id)}
+                      onDelete={() => setEntryToDelete(e.entry_id)}
                     />
                   </TableCell>
                 </TableRow>
@@ -90,6 +126,29 @@ export function EntryListView({ data }: EntryListViewProps) {
         totalPages={totalPages}
         onPageChange={setCurrentPage}
       />
+
+      <AlertDialog 
+        open={entryToDelete !== null} 
+        onOpenChange={(open) => { if (!open) setEntryToDelete(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Do you want to delete this entry?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

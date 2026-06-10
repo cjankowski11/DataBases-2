@@ -12,10 +12,12 @@ import { TablePagination } from "./table-pagination"
 import { TableActions } from "./table-actions"
 
 interface RoomListViewProps {
-  data: Room[]
+  data: Room[];
+  onEdit: (roomId: number) => void;
+  onDelete: (roomId: number) => void;
 }
 
-export function RoomListView({ data }: RoomListViewProps) {
+export function RoomListView({ data, onEdit, onDelete }: RoomListViewProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -30,7 +32,7 @@ export function RoomListView({ data }: RoomListViewProps) {
           <TableRow>
             <TableHead>Room ID</TableHead>
             <TableHead>Room Name</TableHead>
-            <TableHead className="text-right">Gym ID</TableHead>
+            <TableHead className="text-right">Gym</TableHead>
             <TableHead className="text-right w-[100px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -45,13 +47,13 @@ export function RoomListView({ data }: RoomListViewProps) {
                   {r.name}
                 </TableCell>
                 <TableCell className="text-right">
-                  {r.gym_id}
+                  #{r.gym_id} - {r.gym.name}
                 </TableCell>
                 <TableCell className="text-right">
                   <TableActions
                     label="Room Management"
-                    onEdit={() => console.log("Edit " + r.room_id)}
-                    onDelete={() => console.log("Delete " + r.room_id)}
+                    onEdit={() => onEdit(r.room_id)}
+                    onDelete={() => onDelete(r.room_id)}
                   />
                 </TableCell>
               </TableRow>

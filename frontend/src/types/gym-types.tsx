@@ -2,6 +2,7 @@ export interface Room {
   room_id: number;
   gym_id: number;
   name: string;
+  gym: Gym;
 }
 
 export interface ClassType {
@@ -26,7 +27,38 @@ export interface Registration {
   class_registration_id: number;
   client_id: number;
   class_id: number;
+  client: Client;
   registration_date: string;
+  class_info: {
+    class_id: number;
+    class_date: string;
+    class_type_id: number;
+    duration: number;
+    capacity: number;
+    room_id: number;
+    occupancy_pct: number;
+    class_type: {
+      name: string;
+      difficulty: number;
+      class_type_id: number;
+    };
+    room: {
+      name: string;
+      gym_id: number;
+      room_id: number;
+      gym: {
+        gym_id: number;
+        name: string;
+        established: string;
+        email: string;
+        phone: string;
+        area: number;
+        open_hour: string;
+        close_hour: string;
+        address_id: number;
+      };
+    };
+  };
 }
 
 export interface ClassType {
@@ -57,7 +89,7 @@ export interface ClientSubscription{
   transaction_date: string;
   expiration_date: string;
   paid_now:  'Y' | 'N';
-  client?: ClientClass;
+  client?: Client;
   subscription?:Subscription;
 }
 
@@ -66,7 +98,7 @@ export interface Entry {
   entry_time: string;
   client_id: number;
   gym_id: number;
-  client?: ClientClass;
+  client?: Client;
   gym?: Gym;
 }
 

@@ -6,25 +6,36 @@ import { Loader2, AlertCircle, ShoppingCart, Plus } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { 
+  Sheet, 
+  SheetContent, 
+  SheetHeader, 
+  SheetTitle, 
+  SheetDescription, 
+  SheetTrigger 
+} from "@/components/ui/sheet";
+import { ClientSubscriptionForm } from "@/components/forms/client-subscription-form";
 
 export default function SalesView() {
   const [data, setData] = useState<ClientSubscription[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "Y" | "N">("all");
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      const sales = await ClientSubscriptionService.getAll();
+      setData(sales);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load sales");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        const sales = await ClientSubscriptionService.getAll();
-        setData(sales);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load sales");
-      } finally {
-        setIsLoading(false);
-      }
-    };
     fetchData();
   }, []);
 
@@ -59,12 +70,31 @@ export default function SalesView() {
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
           <ShoppingCart className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-bold tracking-tight">Sales</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Sales (Client Subscriptions)</h1>
         </div>
-        <Button onClick={() => console.log("Open Create Modal")} className="gap-2">
-          <Plus className="h-4 w-4" />
-          New Sale
-        </Button>
+        
+        <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+          <SheetTrigger asChild>
+            <Button className="gap-2">
+              <Plus className="h-4 w-4" />
+              New Sale
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="right" className="sm:max-w-[425px]">
+            <SheetHeader>
+              <SheetTitle>Register New Sale</SheetTitle>
+              <SheetDescription>
+                Assign a subscription plan to a client. The expiration date will be calculated automatically.
+              </SheetDescription>
+            </SheetHeader>
+            <ClientSubscriptionForm 
+              onSuccess={() => {
+                setIsSheetOpen(false);
+                fetchData();
+              }} 
+            />
+          </SheetContent>
+        </Sheet>
       </div>
 
       {/* Filter tabs */}
