@@ -29,7 +29,7 @@ async def get_classes(
             select(ClassModel)
             .options(
                 joinedload(ClassModel.class_type),
-                joinedload(ClassModel.room)
+                joinedload(ClassModel.room).joinedload(RoomModel.gym)
             )
         )
 
@@ -66,7 +66,7 @@ async def get_class(class_id: int, db: AsyncSession = Depends(get_db)):
             select(ClassModel)
             .options(
                 joinedload(ClassModel.class_type),
-                joinedload(ClassModel.room)
+                joinedload(ClassModel.room).joinedload(RoomModel.gym)
             )
         ).where(ClassModel.class_id == class_id)
         result = await db.execute(query)
@@ -106,7 +106,7 @@ async def create_class(
             select(ClassModel)
             .options(
                 joinedload(ClassModel.class_type),
-                joinedload(ClassModel.room)
+                joinedload(ClassModel.room).joinedload(RoomModel.gym)
             )
             .where(ClassModel.class_id == new_class.class_id)
         )
@@ -171,7 +171,7 @@ async def update_class(
             select(ClassModel)
             .options(
                 joinedload(ClassModel.class_type),
-                joinedload(ClassModel.room)
+                joinedload(ClassModel.room).joinedload(RoomModel.gym)
             )
             .where(ClassModel.class_id == class_id)
         )

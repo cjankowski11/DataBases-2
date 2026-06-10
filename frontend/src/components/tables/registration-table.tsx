@@ -11,12 +11,15 @@ import { Calendar } from "lucide-react"
 import { useState } from "react"
 import { TablePagination } from "./table-pagination"
 import { TableActions } from "./table-actions";
+import { RegistrationService } from "@/services/gym-service"
 
 interface RegistrationListViewProps {
   data: Registration[]
+  onEdit: (registrationId: number) => void;
+  onDelete: (registrationId: number) => void;
 }
 
-export function RegistrationListView({ data }: RegistrationListViewProps) {
+export function RegistrationListView({ data, onEdit, onDelete }: RegistrationListViewProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -24,14 +27,15 @@ export function RegistrationListView({ data }: RegistrationListViewProps) {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedData = data.slice(startIndex, startIndex + itemsPerPage);
 
+
   return (
     <div className="rounded-md border bg-card">
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead className="w-[120px]">Reg ID</TableHead>
-            <TableHead>Client ID</TableHead>
-            <TableHead>Class ID</TableHead>
+            <TableHead>Client</TableHead>
+            <TableHead>Class</TableHead>
             <TableHead className="text-right">Registration Date</TableHead>
             <TableHead className="text-right w-[100px]">Actions</TableHead>
           </TableRow>
@@ -40,14 +44,14 @@ export function RegistrationListView({ data }: RegistrationListViewProps) {
           {paginatedData.length > 0 ? (
             paginatedData.map((r) => (
               <TableRow key={r.class_registration_id}>
-                <TableCell className="font-mono text-muted-foreground">
+                <TableCell className="text-muted-foreground text-sm">
                   #{r.class_registration_id}
                 </TableCell>
                 <TableCell className="font-medium">
-                  Client #{r.client_id}
+                  #{r.client_id} {r.client.name} {r.client.surname}
                 </TableCell>
                 <TableCell>
-                  Class #{r.class_id}
+                  #{r.class_id} {r.class_info.class_type.name} - {r.class_info.room.name} - {r.class_info.room.gym.name}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-2 text-muted-foreground">
@@ -58,8 +62,8 @@ export function RegistrationListView({ data }: RegistrationListViewProps) {
                 <TableCell className="text-right">
                   <TableActions
                     label="Registration Management"
-                    onEdit={() => console.log("Edit " + r.class_registration_id)}
-                    onDelete={() => console.log("Delete " + r.class_registration_id)}
+                    onEdit={() => onEdit(r.class_registration_id)}
+                    onDelete={() => onDelete(r.class_registration_id)}
                   />
                 </TableCell>
               </TableRow>

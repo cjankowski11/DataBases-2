@@ -6,7 +6,7 @@ from sqlalchemy.orm import joinedload
 from typing import Optional
 
 from ..database import get_db
-from ..models import ClassRegistration as RegistrationModel, Class as ClassModel, Client as ClientModel
+from ..models import ClassRegistration as RegistrationModel, Class as ClassModel, Client as ClientModel, Room as RoomModel
 from ..schemas import ApiResponse, ClassRegistrationSchema, ClassRegistrationCreate, ClassRegistrationUpdate
 from ..utils.error_handle import handle_error, NotFoundError
 
@@ -25,7 +25,7 @@ async def get_registrations(
             .options(
                 joinedload(RegistrationModel.client),
                 joinedload(RegistrationModel.class_info).joinedload(ClassModel.class_type),
-                joinedload(RegistrationModel.class_info).joinedload(ClassModel.room)
+                joinedload(RegistrationModel.class_info).joinedload(ClassModel.room).joinedload(RoomModel.gym)
             )
         )
 
@@ -55,7 +55,7 @@ async def get_registration(class_registration_id: int, db: AsyncSession = Depend
             .options(
                 joinedload(RegistrationModel.client),
                 joinedload(RegistrationModel.class_info).joinedload(ClassModel.class_type),
-                joinedload(RegistrationModel.class_info).joinedload(ClassModel.room)
+                joinedload(RegistrationModel.class_info).joinedload(ClassModel.room).joinedload(RoomModel.gym)
             )
         ).where(RegistrationModel.class_registration_id == class_registration_id)
 
@@ -102,7 +102,7 @@ async def create_registration(
             .options(
                 joinedload(RegistrationModel.client),
                 joinedload(RegistrationModel.class_info).joinedload(ClassModel.class_type),
-                joinedload(RegistrationModel.class_info).joinedload(ClassModel.room)
+                joinedload(RegistrationModel.class_info).joinedload(ClassModel.room).joinedload(RoomModel.gym)
             )
             .where(RegistrationModel.class_registration_id == new_registration.class_registration_id)
         )
@@ -162,7 +162,7 @@ async def update_registration(
             .options(
                 joinedload(RegistrationModel.client),
                 joinedload(RegistrationModel.class_info).joinedload(ClassModel.class_type),
-                joinedload(RegistrationModel.class_info).joinedload(ClassModel.room)
+                joinedload(RegistrationModel.class_info).joinedload(ClassModel.room).joinedload(RoomModel.gym)
             )
             .where(RegistrationModel.class_registration_id == class_registration_id)
         )
