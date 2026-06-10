@@ -441,10 +441,10 @@ CREATE OR REPLACE PROCEDURE generate_rooms()
 LANGUAGE plpgsql AS $$
 BEGIN
 
-    INSERT INTO room (room_id, gym_id, name) VALUES
-        (1, 1, 'Main Weight Room'),
-        (2, 1, 'Cardio Zone'),
-        (3, 1, 'Yoga Studio')
+    INSERT INTO room (gym_id, name) VALUES
+        (1, 'Main Weight Room'),
+        (1, 'Cardio Zone'),
+        (1, 'Yoga Studio')
     ON CONFLICT DO NOTHING;
 END;
 $$;
@@ -453,11 +453,11 @@ CREATE OR REPLACE PROCEDURE generate_classes(num_classes INT)
 LANGUAGE plpgsql AS $$
 DECLARE i INT;
 BEGIN
-    INSERT INTO class_type VALUES (1, 'Yoga', 2), (2, 'Crossfit', 5), (3, 'Pilates', 3) ON CONFLICT DO NOTHING;
+    INSERT INTO class_type (name, difficulty) VALUES ('Yoga', 2), ('Crossfit', 5), ('Pilates', 3) ON CONFLICT DO NOTHING;
 
     FOR i IN 1..num_classes LOOP
-        INSERT INTO class (class_id, class_date, class_type_id, duration, capacity, room_id)
-        VALUES (i, CURRENT_DATE + (i % 14), (i % 3) + 1, 60, 20, (i % 3) + 1)
+        INSERT INTO class (class_date, class_type_id, duration, capacity, room_id)
+        VALUES (CURRENT_DATE + (i % 14), (i % 3) + 1, 60, 20, (i % 3) + 1)
         ON CONFLICT DO NOTHING;
     END LOOP;
 END;
@@ -485,12 +485,10 @@ BEGIN
 
         BEGIN
             INSERT INTO class_registration (
-                class_registration_id,
                 client_id,
                 class_id,
                 registration_date
             ) VALUES (
-                v_reg_id + 1,
                 r_client.client_id,
                 v_class_id,
                 v_random_date
