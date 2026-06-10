@@ -30,6 +30,7 @@ class RoomCreate(RoomBase):
 
 class RoomSchema(RoomBase):
     room_id: int
+    gym: Optional[GymSchema] = None
 
     model_config = {"from_attributes": True}
 

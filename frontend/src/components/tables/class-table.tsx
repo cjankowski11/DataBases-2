@@ -13,13 +13,16 @@ import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { TablePagination } from "./table-pagination"
 import { TableActions } from "./table-actions"
+import { ClassService } from "@/services/gym-service"
 
 
 interface ClassListViewProps {
-  data: GymClass[]
+  data: GymClass[],
+  onEdit: (classId: number) => void,
+  onDelete: (classId: number) => void;
 }
 
-export function ClassListView({ data }: ClassListViewProps) {
+export function ClassListView({ data, onEdit, onDelete }: ClassListViewProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -32,6 +35,7 @@ export function ClassListView({ data }: ClassListViewProps) {
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead>Class ID</TableHead>
             <TableHead>Class Name</TableHead>
             <TableHead>Date</TableHead>
             <TableHead>Room</TableHead>
@@ -45,6 +49,7 @@ export function ClassListView({ data }: ClassListViewProps) {
           {paginatedData.length > 0 ? (
             paginatedData.map((c) => (
               <TableRow key={c.class_id}>
+                <TableCell className="text-muted-foreground text-sm">#{c.class_id}</TableCell>
                 <TableCell className="font-medium">
                   {c.class_type?.name || "Unknown Class"}
                 </TableCell>
@@ -83,8 +88,8 @@ export function ClassListView({ data }: ClassListViewProps) {
                 <TableCell className="text-right">
                   <TableActions
                     label="Class Management"
-                    onEdit={() => console.log("Edit " + c.class_id)}
-                    onDelete={() => console.log("Delete " + c.class_id)}
+                    onEdit={() => onEdit(c.class_id)}
+                    onDelete={() => onDelete(c.class_id)}
                   />
                 </TableCell>
               </TableRow>

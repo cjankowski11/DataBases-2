@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 
 from ..database import get_db
 from ..models import Room as RoomModel, Gym as GymModel
@@ -16,7 +17,10 @@ router = APIRouter(
 @router.get("/", response_model=ApiResponse)
 async def get_rooms(db: AsyncSession = Depends(get_db)):
     try:
-        query = select(RoomModel)
+        query = (
+            select(RoomModel)
+            .options(joinedload(RoomModel.gym))
+        )
         result = await db.execute(query)
         rooms = result.scalars().all()
 
@@ -33,7 +37,11 @@ async def get_rooms(db: AsyncSession = Depends(get_db)):
 @router.get("/{room_id}", response_model=ApiResponse)
 async def get_room(room_id: int, db: AsyncSession = Depends(get_db)):
     try:
-        query = select(RoomModel).where(RoomModel.room_id == room_id)
+        query = (
+            select(RoomModel)
+            .options(
+                joinedload(RoomModel.gym)
+            )).where(RoomModel.room_id == room_id)
         result = await db.execute(query)
         room_db = result.scalar_one_or_none()
 

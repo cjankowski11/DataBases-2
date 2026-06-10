@@ -1,0 +1,212 @@
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ClassService, ClassTypeService, RoomService } from "@/services/gym-service";
+import type { GymClass, ClassType, Room } from "@/types/gym-types";
+import { Loader2, Calendar, Dumbbell, DoorOpen, Timer, Users, CheckCircle, XCircle } from "lucide-react";
+import {
+    Alert,
+    AlertDescription,
+    AlertTitle,
+} from "@/components/ui/alert";
+
+interface EditClassFormProps {
+    classId: number;
+    onSuccess: () => void;
+}
+
+export function EditClassForm({ classId, onSuccess }: EditClassFormProps) {
+    const [isLoading, setIsLoading] = useState(false);
+    const [isFetchingData, setIsFetchingData] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [classData, setClassData] = useState<GymClass | null>(null);
+    const [classTypes, setClassTypes] = useState<ClassType[]>([]);
+    const [rooms, setRooms] = useState<Room[]>([]);
+    const [selectedClassType, setSelectedClassType] = useState<string>("");
+    const [selectedRoom, setSelectedRoom] = useState<string>("");
+
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                setIsFetchingData(true);
+                const [classItem, classTypesData, roomsData] = await Promise.all([
+                    ClassService.getById(classId),
+                    ClassTypeService.getAll(),
+                    RoomService.getAll(),
+                ]);
+
+                setClassData(classItem);
+                setClassTypes(classTypesData);
+                setRooms(roomsData);
+
+                setSelectedClassType(classItem.class_type_id.toString());
+                setSelectedRoom(classItem.room_id.toString());
+            } catch (err) {
+                setError(err instanceof Error ? err.message : "Failed to load class data");
+            } finally {
+                setIsFetchingData(false);
+            }
+        };
+
+        loadData();
+    }, [classId]);
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setError(null);
+        setSuccessMessage(null);
+
+        const formData = new FormData(e.currentTarget);
+
+        const payload = {
+            class_date: formData.get("class_date") as string,
+            class_type_id: parseInt(formData.get("class_type_id") as string),
+            duration: parseInt(formData.get("duration") as string),
+            capacity: parseInt(formData.get("capacity") as string),
+            room_id: parseInt(formData.get("room_id") as string),
+        };
+
+        try {
+            await ClassService.update(classId, payload);
+            onSuccess();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to update fitness class");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    if (isFetchingData) {
+        return (
+            <div className="flex justify-center p-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
+    }
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-6 py-4">
+            {error && (
+                <Alert variant="destructive" className="mb-4">
+                    <XCircle className="h-4 w-4" />
+                    <AlertTitle>Error</AlertTitle>
+                    <AlertDescription>{error}</AlertDescription>
+                </Alert>
+            )}
+
+            {successMessage && (
+                <Alert className="mb-4 border-green-500 bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-300">
+                    <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    <AlertTitle>Success</AlertTitle>
+                    <AlertDescription>{successMessage}</AlertDescription>
+                </Alert>
+            )}
+
+            <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-2">
+                    <Dumbbell className="w-4 h-4" /> Class Type
+                </label>
+                <select
+                    name="class_type_id"
+                    required
+                    value={selectedClassType}
+                    onChange={(e) => setSelectedClassType(e.target.value)}
+                    disabled={isLoading}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                    <option value="">Select class type...</option>
+                    {classTypes.map((t) => (
+                        <option key={t.class_type_id} value={t.class_type_id}>
+                            {t.name}
+                        </option>
+                    ))}
+                </select>
+            </div>
+
+            <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-2">
+                    <DoorOpen className="w-4 h-4" /> Room
+                </label>
+                <select
+                    name="room_id"
+                    required
+                    value={selectedRoom}
+                    onChange={(e) => setSelectedRoom(e.target.value)}
+                    disabled={isLoading}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                    <option value="">Select room...</option>
+                    {rooms.map((r) => (
+                        <option key={r.room_id} value={r.room_id}>
+                            {r.name} — {r.gym?.name || `Gym #${r.gym_id}`}
+                        </option>
+                    ))}
+                </select>
+            </div>
+
+            <div className="space-y-2">
+                <label htmlFor="class_date" className="text-sm font-medium flex items-center gap-2">
+                    <Calendar className="w-4 h-4" /> Class Date
+                </label>
+                <Input
+                    id="class_date"
+                    name="class_date"
+                    type="date"
+                    required
+                    defaultValue={classData?.class_date?.split("T")[0] || new Date().toISOString().split("T")[0]}
+                    disabled={isLoading}
+                />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <label htmlFor="duration" className="text-sm font-medium flex items-center gap-2">
+                        <Timer className="w-4 h-4" /> Duration (min)
+                    </label>
+                    <Input
+                        id="duration"
+                        name="duration"
+                        type="number"
+                        min="1"
+                        placeholder="60"
+                        required
+                        defaultValue={classData?.duration}
+                        disabled={isLoading}
+                    />
+                </div>
+
+                <div className="space-y-2">
+                    <label htmlFor="capacity" className="text-sm font-medium flex items-center gap-2">
+                        <Users className="w-4 h-4" /> Capacity
+                    </label>
+                    <Input
+                        id="capacity"
+                        name="capacity"
+                        type="number"
+                        min="1"
+                        placeholder="20"
+                        required
+                        defaultValue={classData?.capacity}
+                        disabled={isLoading}
+                    />
+                </div>
+            </div>
+
+            <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? (
+                    <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Updating class...
+                    </>
+                ) : (
+                    <>
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Update Class
+                    </>
+                )}
+            </Button>
+        </form>
+    );
+}

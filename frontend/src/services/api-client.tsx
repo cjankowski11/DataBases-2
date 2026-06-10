@@ -9,14 +9,38 @@ export class ApiClient<T> {
     this.endpoint = endpoint;
   }
 
-  getAll = async (): Promise<T[]> => {
+  getAll = async (params?: Record<string, any>): Promise<T[]> => {
     try {
-      const response = await fetch(`${BASE_URL}${this.endpoint}`);
+      let url = `${BASE_URL}${this.endpoint}`;
+      if (params && Object.keys(params).length > 0) {
+        const queryParams = new URLSearchParams();
+        Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined && value !== null && value !== '') {
+            queryParams.append(key, value.toString());
+          }
+        });
+        const queryString = queryParams.toString();
+        if (queryString) {
+          url += `?${queryString}`;
+        }
+      }
+      const response = await fetch(url);
       if (!response.ok) throw new Error(`Failed to fetch from ${this.endpoint}`);
       const result = await response.json();
       return result.data !== undefined ? result.data : result;
     } catch (error) {
       console.error(`API Error [GET ${this.endpoint}]:`, error);
+      throw error;
+    }
+  };
+  getById = async (id: string | number): Promise<T> => {
+    try {
+      const response = await fetch(`${BASE_URL}${this.endpoint}${id}/`);
+      if (!response.ok) throw new Error(`Failed to fetch item ${id} from ${this.endpoint}`);
+      const result = await response.json();
+      return result.data !== undefined ? result.data : result;
+    } catch (error) {
+      console.error(`API Error [GET ${this.endpoint}${id}]:`, error);
       throw error;
     }
   };
@@ -91,6 +115,32 @@ export class ApiClient<T> {
       return result.data !== undefined ? result.data : result;
     } catch (error) {
       console.error(`API Error [POST ${this.endpoint}]:`, error);
+      throw error;
+    }
+  };
+  update = async <TUpdate,>(id: string | number, payload: TUpdate): Promise<T> => {
+    try {
+      const response = await fetch(`${BASE_URL}${this.endpoint}${id}/`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        let errorMessage = `Failed to update item ${id} at ${this.endpoint}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorData.message || errorMessage;
+        } catch (e) {
+          // ignore JSON parsing errors
+        }
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+      return result.data !== undefined ? result.data : result;
+    } catch (error) {
+      console.error(`API Error [PATCH ${this.endpoint}${id}]:`, error);
       throw error;
     }
   };
