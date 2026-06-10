@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import List, Optional, Any, Union, Literal
 from datetime import date, datetime, time
 from decimal import Decimal
@@ -84,10 +84,20 @@ class EmployeeBase(BaseModel):
     gender: Literal["M", "F"]
     date_employed: Optional[date] = None
     salary: Optional[Decimal] = None
+    def empty_salary_to_none(cls, v):
+        if v == "":
+            return None
+        return v
 
 
 class EmployeeCreate(EmployeeBase):
-    pass  
+    date_employed: date
+    birth_date: Optional[date] = None
+    @field_validator('birth_date', mode='before')
+    def empty_date_to_none(cls, v):
+        if v == "":
+            return None
+        return v
 
 class EmployeeUpdate(EmployeeBase):
     pass
@@ -100,7 +110,7 @@ class EmployeeSchema(EmployeeBase):
     employee_id: int
     is_employed: bool
     employee_type: str
-    birth_date: date
+    birth_date: Optional[date] = None
     model_config = {"from_attributes": True}
 
 class ReceptionistBase(BaseModel):
@@ -108,6 +118,9 @@ class ReceptionistBase(BaseModel):
 
 class ReceptionistSchema(EmployeeSchema, ReceptionistBase):
     model_config = {"from_attributes": True}
+
+class ReceptionistCreate(EmployeeCreate):
+    shift: str
     
 class TrainerBase(BaseModel):
     specialization: str
@@ -115,6 +128,10 @@ class TrainerBase(BaseModel):
 
 class TrainerSchema(EmployeeSchema, TrainerBase):
     model_config = {"from_attributes": True}
+
+class TrainerCreate(EmployeeCreate, TrainerBase):
+    pass
+
 
 EmployeeUnion = Union[EmployeeSchema, ReceptionistSchema, TrainerSchema]
 

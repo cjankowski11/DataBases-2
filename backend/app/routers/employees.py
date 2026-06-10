@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, func
 from sqlalchemy.orm import joinedload, with_polymorphic
 from typing import Optional, List
 from datetime import date
@@ -16,7 +16,10 @@ from ..schemas import (
     ApiResponse, 
     EmployeeSchema, 
     TrainerSchema, 
-    ReceptionistSchema
+    ReceptionistSchema,
+    EmployeeCreate,
+    ReceptionistCreate,
+    TrainerCreate
 )
 from ..utils.error_handle import handle_error, NotFoundError
 
@@ -36,11 +39,9 @@ async def get_employees(
     from_date_employed: Optional[date] = Query(None)
 ):
     try:
-        # 1. Definiujemy polimorfizm dla pracowników
         poly = with_polymorphic(EmployeeModel, [TrainerModel, ReceptionistModel])
         query = select(poly)
 
-        # 2. Dynamiczne filtry
         filters = []
         if name:
             filters.append(poly.name.ilike(f"%{name}%"))
@@ -61,10 +62,8 @@ async def get_employees(
         query = query.order_by(poly.surname, poly.name)
 
         result = await db.execute(query)
-        # Przy polimorfizmie zawsze warto użyć .unique() przed .all()
         employees_list = result.scalars().unique().all()
 
-        # 3. Walidacja za pomocą isinstance na wzór Twojego kodu
         validated_data = []
         for e in employees_list:
             if isinstance(e, TrainerModel):
@@ -95,7 +94,6 @@ async def get_employee(employee_id: int, db: AsyncSession = Depends(get_db)):
         if not e:
             raise NotFoundError(resource="Employee", id=employee_id)
 
-        # Walidacja pojedynczego obiektu przez isinstance
         if isinstance(e, TrainerModel):
             data = TrainerSchema.model_validate(e)
         elif isinstance(e, ReceptionistModel):
@@ -110,3 +108,97 @@ async def get_employee(employee_id: int, db: AsyncSession = Depends(get_db)):
         }
     except Exception as e:
         return handle_error(e, context="get_employee")
+    
+@router.post("/", response_model=ApiResponse)
+async def create_general_employee(employee_in: EmployeeCreate, db: AsyncSession = Depends(get_db)):
+    try:
+        print(employee_in)
+        result = await db.execute(select(func.max(EmployeeModel.employee_id)))
+        next_id = (result.scalar() or 0) + 1
+        data = employee_in.model_dump()
+        data["employee_id"] = next_id
+        data["employee_type"] = "employee"
+        data["is_employed"] = True
+        print(data)
+
+
+        new_employee = EmployeeModel(**data)
+        db.add(new_employee)
+        await db.commit()
+
+        return {
+            "status": "SUCCEEDED",
+            "data": EmployeeSchema.model_validate(new_employee),
+            "message": "Employee created successfully"
+        }
+    except Exception as e:
+        await db.rollback()
+        return handle_error(e, context="create_general_employee")
+
+
+@router.post("/receptionists", response_model=ApiResponse)
+async def create_receptionist(receptionist_in: ReceptionistCreate, db: AsyncSession = Depends(get_db)):
+    try:
+        result = await db.execute(select(func.max(EmployeeModel.employee_id)))
+        next_id = (result.scalar() or 0) + 1
+
+        data = receptionist_in.model_dump()
+        
+        shift_value = data.pop("shift")
+        
+        data["employee_id"] = next_id
+        data["employee_type"] = "receptionist"
+        data["is_employed"] = True
+
+        new_receptionist = ReceptionistModel(
+            shift=shift_value,
+            **data
+        )
+        
+        db.add(new_receptionist)
+        await db.commit()
+        await db.refresh(new_receptionist)
+
+        return {
+            "status": "SUCCEEDED",
+            "data": ReceptionistSchema.model_validate(new_receptionist),
+            "message": "Receptionist created successfully"
+        }
+    except Exception as e:
+        await db.rollback()
+        return handle_error(e, context="create_receptionist")
+
+
+@router.post("/trainers", response_model=ApiResponse)
+async def create_trainer(trainer_in: TrainerCreate, db: AsyncSession = Depends(get_db)):
+    try:
+        result = await db.execute(select(func.max(EmployeeModel.employee_id)))
+        next_id = (result.scalar() or 0) + 1
+
+        data = trainer_in.model_dump()
+        
+        specialization_value = data.pop("specialization")
+        hourly_wage_value = data.pop("hourly_wage")
+        
+        data["employee_id"] = next_id
+        data["employee_type"] = "trainer"
+        data["is_employed"] = True
+
+        new_trainer = TrainerModel(
+            specialization=specialization_value,
+            hourly_wage=hourly_wage_value,
+            **data
+        )
+        
+        db.add(new_trainer)
+        await db.commit()
+        await db.refresh(new_trainer) 
+
+        return {
+            "status": "SUCCEEDED",
+            "data": TrainerSchema.model_validate(new_trainer),
+            "message": "Trainer created successfully"
+        }
+    except Exception as e:
+        await db.rollback()
+        return handle_error(e, context="create_trainer")

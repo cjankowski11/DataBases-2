@@ -8,12 +8,14 @@ import { Loader2, AlertCircle, Users, UserPlus } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useLocation, Link } from "wouter";
 
 export default function EmployeeView() {
   const [data, setData] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("all");
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -64,19 +66,43 @@ export default function EmployeeView() {
   const filtered =
     filter === "all" ? data : data.filter((e) => e.employee_type === filter);
 
+  const buttonConfig = {
+    all: { 
+      text: "Add Employee", 
+      icon: <UserPlus className="h-4 w-4" />, 
+      href: "/employees/new" 
+    },
+    receptionist: { 
+      text: "Add Receptionist", 
+      icon: <UserPlus className="h-4 w-4 text-blue-500" />, 
+      href: "/receptionists/new" 
+    },
+    trainer: { 
+      text: "Add Trainer", 
+      icon: <UserPlus className="h-4 w-4 text-green-500" />, 
+      href: "/trainers/new" 
+    },
+  } as const;
+
+  const currentButton = buttonConfig[filter as keyof typeof buttonConfig] || buttonConfig.all;
+
   return (
     <div className="p-8 space-y-6">
+      
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
           <Users className="h-8 w-8 text-primary" />
           <h1 className="text-3xl font-bold tracking-tight">Employees</h1>
         </div>
-        <Button className="gap-2">
-          <UserPlus className="h-4 w-4" />
-          Add Employee
-        </Button>
+        
+        <Link to={currentButton.href}>
+          <Button className="gap-2 capitalize animate-in fade-in duration-200">
+            {currentButton.icon}
+            {currentButton.text}
+          </Button>
+        </Link>
       </div>
-      
+
       <div className="flex gap-2">
         {filters.map((f) => (
           <Badge
@@ -94,17 +120,18 @@ export default function EmployeeView() {
       </div>
 
       <div className="mt-4">
-      {(() => {
-        switch (filter) {
-          case "trainer":
-            return <TrainerListView data={filtered} />;
-          case "receptionist":
-            return <ReceptionistListView data={filtered} />;
-          default:
-            return <EmployeeListView data={filtered} />;
-        }
-      })()}
-    </div>
+        {(() => {
+          switch (filter) {
+            case "trainer":
+              return <TrainerListView data={filtered} />;
+            case "receptionist":
+              return <ReceptionistListView data={filtered} />;
+            default:
+              return <EmployeeListView data={filtered} />;
+          }
+        })()}
+      </div>
+
     </div>
   );
 }

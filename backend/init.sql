@@ -1834,6 +1834,23 @@ CREATE TRIGGER trg_check_overlapping_contracts
 BEFORE INSERT ON contract
 FOR EACH ROW EXECUTE FUNCTION check_overlapping_contracts();
 
+CREATE OR REPLACE FUNCTION validate_employee_dates()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.birth_date IS NOT NULL AND AGE(NEW.date_employed, NEW.birth_date) < INTERVAL '16 years' THEN
+        RAISE EXCEPTION 'Error: We dont hire people under 16! Birth date: %, Employed date: %', 
+            NEW.birth_date, NEW.date_employed;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_check_employee_dates
+BEFORE INSERT OR UPDATE ON employee
+FOR EACH ROW
+EXECUTE FUNCTION validate_employee_dates();
+
 CALL generate_addresses();
 CALL generate_more_clients(2000);
 CALL generate_sponsors();
