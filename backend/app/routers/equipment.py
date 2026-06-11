@@ -12,7 +12,7 @@ from ..models import (
     Gym as GymModel,
     Address as AddressModel
     )
-from ..schemas import EquipmentUnion, ApiResponse, WeightSchema, MachineSchema, AccessorySchema, EquipmentSchema, WeightCreate, MachineCreate, AccessoryCreate
+from ..schemas import EquipmentUnion, ApiResponse, WeightSchema, MachineSchema, AccessorySchema, EquipmentSchema, WeightCreate, MachineCreate, AccessoryCreate, WeightUpdate, MachineUpdate, AccessoryUpdate
 from ..utils.error_handle import handle_error, NotFoundError
 
 
@@ -170,6 +170,105 @@ async def create_accessory(
         }
     except Exception as e:
         return handle_error(e, context="create_accessory")
+
+@router.patch("/weights/{equipment_id}", response_model=ApiResponse)
+async def update_weight(
+    equipment_id: int,
+    payload: WeightUpdate,
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        eq = await db.get(WeightModel, equipment_id)
+        if not eq:
+            raise NotFoundError(resource="Weight", id=equipment_id)
+
+        update_data = payload.model_dump(exclude_unset=True)
+        if "gym_id" in update_data and update_data["gym_id"] is not None:
+            gym = await db.get(GymModel, update_data["gym_id"])
+            if not gym:
+                raise NotFoundError(resource="Gym", id=update_data["gym_id"])
+
+        for key, value in update_data.items():
+            setattr(eq, key, value)
+
+        await db.commit()
+        await db.refresh(eq)
+        full = await _fetch_one_full(db, eq.equipment_id)
+
+        return {
+            "status": "SUCCEEDED",
+            "data": WeightSchema.model_validate(full),
+            "message": "Weight updated successfully"
+        }
+    except Exception as e:
+        await db.rollback()
+        return handle_error(e, context="update_weight")
+
+@router.patch("/machines/{equipment_id}", response_model=ApiResponse)
+async def update_machine(
+    equipment_id: int,
+    payload: MachineUpdate,
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        eq = await db.get(MachineModel, equipment_id)
+        if not eq:
+            raise NotFoundError(resource="Machine", id=equipment_id)
+
+        update_data = payload.model_dump(exclude_unset=True)
+        if "gym_id" in update_data and update_data["gym_id"] is not None:
+            gym = await db.get(GymModel, update_data["gym_id"])
+            if not gym:
+                raise NotFoundError(resource="Gym", id=update_data["gym_id"])
+
+        for key, value in update_data.items():
+            setattr(eq, key, value)
+
+        await db.commit()
+        await db.refresh(eq)
+        full = await _fetch_one_full(db, eq.equipment_id)
+
+        return {
+            "status": "SUCCEEDED",
+            "data": MachineSchema.model_validate(full),
+            "message": "Machine updated successfully"
+        }
+    except Exception as e:
+        await db.rollback()
+        return handle_error(e, context="update_machine")
+
+@router.patch("/accessories/{equipment_id}", response_model=ApiResponse)
+async def update_accessory(
+    equipment_id: int,
+    payload: AccessoryUpdate,
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        eq = await db.get(AccessoryModel, equipment_id)
+        if not eq:
+            raise NotFoundError(resource="Accessory", id=equipment_id)
+
+        update_data = payload.model_dump(exclude_unset=True)
+        if "gym_id" in update_data and update_data["gym_id"] is not None:
+            gym = await db.get(GymModel, update_data["gym_id"])
+            if not gym:
+                raise NotFoundError(resource="Gym", id=update_data["gym_id"])
+
+        for key, value in update_data.items():
+            setattr(eq, key, value)
+
+        await db.commit()
+        await db.refresh(eq)
+        full = await _fetch_one_full(db, eq.equipment_id)
+
+        return {
+            "status": "SUCCEEDED",
+            "data": AccessorySchema.model_validate(full),
+            "message": "Accessory updated successfully"
+        }
+    except Exception as e:
+        await db.rollback()
+        return handle_error(e, context="update_accessory")
 
 @router.delete("/{equipment_id}", response_model=ApiResponse)
 async def delete_equipment(equipment_id: int, db: AsyncSession = Depends(get_db)):

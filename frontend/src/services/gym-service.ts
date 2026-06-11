@@ -33,6 +33,30 @@ export const EquipmentService = Object.assign(new ApiClient<Equipment>("/equipme
     });
     return response.json();
   },
+  updateWeight: async (id: number, data: any) => {
+    const response = await fetch(`http://localhost:8000/equipment/weights/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    return response.json();
+  },
+  updateMachine: async (id: number, data: any) => {
+    const response = await fetch(`http://localhost:8000/equipment/machines/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    return response.json();
+  },
+  updateAccessory: async (id: number, data: any) => {
+    const response = await fetch(`http://localhost:8000/equipment/accessories/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    return response.json();
+  },
 });
 export const ClientSubscriptionService = new ApiClient<ClientSubscription>("/subscriptions/client-subscriptions/");
 export const EmployeeService = new ApiClient<Employee>("/employees/");

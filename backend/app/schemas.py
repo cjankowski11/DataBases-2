@@ -466,6 +466,48 @@ class ClientSubscriptionCreate(BaseModel):
     paid_now: str
     expiration_date: date
 
+class EquipmentUpdate(BaseModel):
+    serial_number: Optional[int] = None
+    gym_id: Optional[int] = None
+    producer: Optional[str] = None
+    name: Optional[str] = None
+    state: Optional[str] = None
+    date_bought: Optional[date] = None
+    date_produced: Optional[date] = None
+    price: Optional[Decimal] = None
+    equipment_type: Optional[str] = None
+
+class WeightUpdate(EquipmentUpdate):
+    weight: Optional[Decimal] = None
+    type: Optional[str] = None
+    material: Optional[str] = None
+
+class MachineUpdate(EquipmentUpdate):
+    max_weight: Optional[int] = None
+    bodypart_target: Optional[str] = None
+
+class AccessoryUpdate(EquipmentUpdate):
+    type: Optional[str] = None
+
+class EntryUpdate(BaseModel):
+    client_id: Optional[int] = None
+    gym_id: Optional[int] = None
+    entry_time: Optional[datetime] = None
+
+class SubscriptionUpdate(BaseModel):
+    name: Optional[str] = None
+    price: Optional[Decimal] = None
+    duration: Optional[int] = None
+    entry_until: Optional[date] = None
+
+class ClientSubscriptionUpdate(BaseModel):
+    client_id: Optional[int] = None
+    receptionist_employee_id: Optional[int] = None
+    subscription_id: Optional[int] = None
+    transaction_date: Optional[date] = None
+    paid_now: Optional[str] = None
+    expiration_date: Optional[date] = None
+
 
 
 
