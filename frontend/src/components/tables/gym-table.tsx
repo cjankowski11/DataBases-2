@@ -15,9 +15,11 @@ import { TableActions } from "./table-actions"
 
 interface GymListViewProps {
   data: Gym[]
+  onEdit: (gym_id: number) => void
+  onDelete: (gym_id: number) => void
 }
 
-export function GymListView({ data }: GymListViewProps) {
+export function GymListView({ data, onEdit, onDelete }: GymListViewProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -98,8 +100,8 @@ export function GymListView({ data }: GymListViewProps) {
                 <TableCell className="text-right">
                   <TableActions
                     label="Gym Management"
-                    onEdit={() => console.log("Edit Gym " + g.gym_id)}
-                    onDelete={() => console.log("Delete Gym " + g.gym_id)}
+                    onEdit={() => onEdit(g.gym_id)}
+                    onDelete={() => onDelete(g.gym_id)}
                   />
                 </TableCell>
               </TableRow>

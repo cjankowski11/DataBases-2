@@ -508,6 +508,16 @@ class ClientSubscriptionUpdate(BaseModel):
     paid_now: Optional[str] = None
     expiration_date: Optional[date] = None
 
+class ContractUpdate(BaseModel):
+    payment: Optional[Decimal] = None
+    expiration_date: Optional[date] = None
 
-
+class GymUpdate(BaseModel):
+    name: Optional[str] = None
+    mail: Optional[str] = None
+    phone: Optional[str] = None
+    area: Optional[int] = None
+    open_hour: Optional[time] = None
+    close_hour: Optional[time] = None
+    address_id: Optional[int] = None
 

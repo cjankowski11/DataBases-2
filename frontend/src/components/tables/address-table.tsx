@@ -10,53 +10,19 @@ import {
 import React, { useState } from "react"
 import { TablePagination } from "./table-pagination"
 import { TableActions } from "./table-actions"
-import { AddressService } from "@/services/gym-service";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 
 interface AddressListViewProps {
-  data: Address[]
+  data: Address[],
+  onDelete: (addressId: number) => void;
 }
 
-export function AddressListView({ data }: AddressListViewProps) {
+export function AddressListView({ data, onDelete }: AddressListViewProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-  const [addressToDelete, setAddressToDelete] = useState<number | string | null>(null);
 
   const totalPages = Math.ceil(data.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedData = data.slice(startIndex, startIndex + itemsPerPage);
-
-  const handleDeleteConfirm = async () => {
-    if (!addressToDelete) return;
-
-    try {
-      console.log("Delete finalized for address ID: " + addressToDelete);
-      await AddressService.delete(addressToDelete);
-      window.location.reload();
-    } catch (error: any) {
-      let errorMessage = "An unexpected error occurred.";
-
-      if (error.response?.data?.detail) {
-        errorMessage = error.response.data.detail;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      alert(`Deletion Failed:\n${errorMessage}`);
-      console.error("Failed to delete address:", error);
-    } finally {
-      setAddressToDelete(null);
-    }
-  };
 
   return (
     <div className="rounded-md border bg-card">
@@ -91,7 +57,7 @@ export function AddressListView({ data }: AddressListViewProps) {
                 <TableCell className="text-right">
                   <TableActions
                     label="Address Management"
-                    onDelete={() => setAddressToDelete(a.address_id)}
+                    onDelete={() => onDelete(a.address_id)}
                   />
                 </TableCell>
               </TableRow>
@@ -111,29 +77,6 @@ export function AddressListView({ data }: AddressListViewProps) {
         totalPages={totalPages}
         onPageChange={setCurrentPage}
       />
-
-      <AlertDialog 
-        open={addressToDelete !== null} 
-        onOpenChange={(open) => { if (!open) setAddressToDelete(null); }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Do you want to delete this address?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDeleteConfirm}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
