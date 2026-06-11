@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 
 interface TableActionsProps {
   onEdit?: () => void;
-  onDelete: () => void;
+  onDelete?: () => void;
   label?: string;
 }
 
@@ -32,13 +32,15 @@ export function TableActions({ onEdit, onDelete, label = "Actions" }: TableActio
             Edit
           </DropdownMenuItem>
         )}
-        <DropdownMenuItem
-          onClick={onDelete}
-          className="gap-2 cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
-        >
-          <Trash2 className="h-4 w-4" />
-          Delete
-        </DropdownMenuItem>
+        {onDelete && (
+          <DropdownMenuItem
+            onClick={onDelete}
+            className="gap-2 cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

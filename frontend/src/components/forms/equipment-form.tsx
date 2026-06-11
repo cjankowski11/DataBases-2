@@ -269,3 +269,4 @@ export function EquipmentForm({ onSuccess, gyms }: EquipmentFormProps) {
     </form>
   );
 }
+

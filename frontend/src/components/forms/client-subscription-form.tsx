@@ -234,3 +234,4 @@ export function ClientSubscriptionForm({ onSuccess }: ClientSubscriptionFormProp
     </form>
   );
 }
+

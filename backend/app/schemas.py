@@ -80,15 +80,27 @@ class ClassUpdate(BaseModel):
     capacity: Optional[int] = None
     room_id: Optional[int] = None
 
-class ClientSchema(BaseModel):
-    client_id: int
+class ClientBase(BaseModel):
     name: str
     surname: str
     email: str
     phone: str
     birth_date: Optional[date] = None
 
+class ClientSchema(ClientBase):
+    client_id: int
+
     model_config = {"from_attributes": True}
+
+class ClientCreate(ClientBase):
+    pass
+
+class ClientUpdate(BaseModel):
+    name: Optional[str] = None
+    surname: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    birth_date: Optional[date] = None
 
 class ClassRegistrationBase(BaseModel):
     client_id: int
@@ -217,6 +229,12 @@ class ArticleSchema(ArticleBase):
 
     model_config = {"from_attributes": True}
 
+class ArticleUpdate(BaseModel):
+    name: Optional[str] = None
+    price: Optional[float] = None
+    type: Optional[str] = None
+    stock: Optional[int] = None
+
 
 class StocktakingBase(BaseModel):
     gym_id: int
@@ -229,6 +247,10 @@ class StocktakingSchema(StocktakingBase):
     stocktaking_id: int
 
     model_config = {"from_attributes": True}
+
+class StocktakingUpdate(BaseModel):
+    gym_id: Optional[int] = None
+    stocktaking_date: Optional[date] = None
 
 
 class TransactionArticleCreate(BaseModel):
@@ -259,62 +281,13 @@ class TransactionClientSchema(BaseModel):
 
     model_config = {"from_attributes": True}
 
-
-class ArticleBase(BaseModel):
-    name: str
-    price: float
-    type: str
-    stock: int
-
-class ArticleCreate(ArticleBase):
-    pass
-
-class ArticleSchema(ArticleBase):
-    article_id: int
-
-    model_config = {"from_attributes": True}
+class TransactionClientUpdate(BaseModel):
+    client_id: Optional[int] = None
+    receptionist_employee_id: Optional[int] = None
+    transaction_date: Optional[date] = None
+    articles: Optional[List[TransactionArticleCreate]] = None
 
 
-class StocktakingBase(BaseModel):
-    gym_id: int
-    stocktaking_date: date
-
-class StocktakingCreate(StocktakingBase):
-    pass
-
-class StocktakingSchema(StocktakingBase):
-    stocktaking_id: int
-
-    model_config = {"from_attributes": True}
-
-
-class TransactionArticleCreate(BaseModel):
-    article_id: int
-    quantity: int
-
-class TransactionArticleSchema(BaseModel):
-    transaction_client_id: int
-    article_id: int
-    quantity: Optional[int] = None
-    article: Optional[ArticleSchema] = None
-
-    model_config = {"from_attributes": True}
-
-
-class TransactionClientCreate(BaseModel):
-    client_id: int
-    receptionist_employee_id: int
-    transaction_date: date
-    articles: List[TransactionArticleCreate]
-
-class TransactionClientSchema(BaseModel):
-    transaction_client_id: int
-    client_id: int
-    receptionist_employee_id: int
-    transaction_date: date
-    articles: List[TransactionArticleSchema] = []
-
-    model_config = {"from_attributes": True}
 
 
 class AddressBase(BaseModel):
