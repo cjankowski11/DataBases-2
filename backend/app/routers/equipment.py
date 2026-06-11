@@ -46,7 +46,7 @@ async def _fetch_one_full(db: AsyncSession, equipment_id: int) -> EquipmentUnion
 async def get_equipment(db: AsyncSession = Depends(get_db)):
     try:
         poly = with_polymorphic(EquipmentModel, [WeightModel,MachineModel,AccessoryModel])
-        query = select(poly).options(joinedload(poly.gym).joinedload(GymModel.address))
+        query = select(poly).order_by(poly.equipment_id.desc()).options(joinedload(poly.gym).joinedload(GymModel.address))
         result = await db.execute(query)
         equipment_list = result.scalars().all()
 

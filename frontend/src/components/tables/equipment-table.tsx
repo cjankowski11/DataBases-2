@@ -39,8 +39,8 @@ export function EquipmentListView({ data, onEdit, onDelete }: EquipmentListViewP
       return `${eq.weight} kg`
     if (eq.equipment_type === "machine" && eq.max_weight)
       return `Max ${eq.max_weight} kg · ${eq.bodypart_target ?? "—"}`
-    if (eq.equipment_type === "accessory" && eq.type)
-      return eq.type
+    if (eq.equipment_type === "accessory")
+      return "Accessory"
     return "—"
   }
 
@@ -65,7 +65,7 @@ export function EquipmentListView({ data, onEdit, onDelete }: EquipmentListViewP
                 <TableCell className="font-medium">{eq.name}</TableCell>
                 <TableCell>{eq.producer}</TableCell>
                 <TableCell>
-                  <Badge variant="outline" className="capitalize">
+                  <Badge variant={eq.equipment_type === 'machine' ? "default" : "secondary"} className="capitalize">
                     {TYPE_LABELS[eq.equipment_type] ?? eq.equipment_type}
                   </Badge>
                 </TableCell>

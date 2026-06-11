@@ -109,12 +109,12 @@ class TrainerClass(Base):
     Class = relationship("Class")
 
 class PersonalTraining(Base):
-    __tablename__ = "personaltraining"
+    __tablename__ = "personal_training"
     personal_training_id = Column(Integer, primary_key=True)
     client_id = Column(Integer, ForeignKey("client.client_id"), nullable=False)
     start_time = Column(DateTime, nullable=False)
     duration = Column(Integer, nullable=False)
-    trainer_id = Column(Integer, ForeignKey("employee.employee_id"), nullable=False)
+    trainer_id = Column("employee_id", Integer, ForeignKey("employee.employee_id"), nullable=False)
 
     client = relationship("Client")
     trainer = relationship("Trainer")
@@ -225,7 +225,7 @@ class TransactionClient(Base):
     transaction_date = Column(Date, nullable=False)
 
     client = relationship("Client")
-    articles = relationship("TransactionArticle", back_populates="transaction")
+    articles = relationship("TransactionArticle", back_populates="transaction", cascade="all, delete-orphan")
 
 class TransactionArticle(Base):
     __tablename__ = "transaction_article"

@@ -166,3 +166,4 @@ export function EntryForm({ onSuccess }: EntryFormProps) {
     </form>
   );
 }
+
