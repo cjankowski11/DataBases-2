@@ -13,10 +13,11 @@ import { ShieldCheck } from "lucide-react"
 import { TableActions } from "./table-actions"
 
 interface SponsorListViewProps {
-  data: Sponsor[]
+  data: Sponsor[],
+  onDelete: (sponsorId: number) => void;
 }
 
-export function SponsorsListView({ data }: SponsorListViewProps) {
+export function SponsorsListView({ data, onDelete }: SponsorListViewProps) {
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
 
@@ -50,8 +51,7 @@ export function SponsorsListView({ data }: SponsorListViewProps) {
                 <TableCell className="text-right">
                   <TableActions
                     label="Sponsor Management"
-                    onEdit={() => console.log("Edit Sponsor " + sponsor.sponsor_id)}
-                    onDelete={() => console.log("Delete Sponsor " + sponsor.sponsor_id)}
+                    onDelete={() => onDelete(sponsor.sponsor_id)}
                   />
                 </TableCell>
 
@@ -66,6 +66,7 @@ export function SponsorsListView({ data }: SponsorListViewProps) {
           )}
         </TableBody>
       </Table>
+
       <TablePagination
         currentPage={currentPage}
         totalPages={totalPages}

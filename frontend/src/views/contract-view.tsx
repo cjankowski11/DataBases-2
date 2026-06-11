@@ -1,32 +1,115 @@
 import { useEffect, useState } from "react";
 import { ContractService } from "@/services/gym-service";
 import type { Contract } from "@/types/gym-types";
-import { Loader2, AlertCircle, FileText, Plus, Calendar, Coins, Building2 } from "lucide-react";
+import { Loader2, FileText, Plus, Calendar, Coins, Building2, XCircle, CheckCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import { ContractForm } from "@/components/forms/contract-form";
+import { EditContractForm } from "@/components/forms/edit/edit-contract-form";
+import { DeleteConfirmDialog } from "@/components/forms/delete-confirm-dialog";
+import { TableActions } from "@/components/tables/table-actions"
 
 export default function ContractView() {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [editingContractId, setEditingContractId] = useState<number | null>(null);
+  const [deletingContractId, setDeletingContractId] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isActionsOpen, setIsActionsOpen] = useState(false);
+  const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
+
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      const contracts = await ContractService.getAll();
+      setContracts(contracts);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load contracts");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        const contracts = await ContractService.getAll();
-        setContracts(contracts);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load contracts");
-      } finally {
-        setIsLoading(false);
-      }
-    };
     fetchData();
   }, []);
+
+  const handleEdit = (contractId: number) => {
+      setEditingContractId(contractId);
+      setIsSheetOpen(true);
+      setIsActionsOpen(false);
+      setSelectedContract(null);
+    };
+  
+  const handleDeleteClick = (contractId: number) => {
+    setDeletingContractId(contractId);
+    setIsActionsOpen(false);
+    setSelectedContract(null);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingContractId) return;
+
+    setIsDeleting(true);
+    try {
+      await ContractService.delete(deletingContractId);
+      setSuccessMessage("Contract deleted successfully!");
+      await fetchData();
+      setEditingContractId(null);
+
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 5000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete contract");
+
+      setTimeout(() => {
+        setError(null);
+      }, 5000);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeletingContractId(null);
+  };
+
+  const handleSheetClose = () => {
+    setIsSheetOpen(false);
+    setTimeout(() => {
+      setEditingContractId(null);
+    }, 300);
+  };
+
+  const handleSuccess = () => {
+    setIsSheetOpen(false);
+    setSuccessMessage("Contract saved successfully!");
+    fetchData();
+    setTimeout(() => {
+      setEditingContractId(null);
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 3000);
+    }, 300);
+  };
+
+  const isEditing = editingContractId !== null;
+  const contractToDelete = deletingContractId
+    ? contracts.find(c => c.contract_id === deletingContractId)
+    : null;
 
   if (isLoading) {
     return (
@@ -35,19 +118,6 @@ export default function ContractView() {
       </div>
     );
   }
-
-  if (error) {
-    return (
-      <div className="p-6">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
 
   const groupedByGym = contracts.reduce((groups, contract) => {
     const gymName = contract.gym?.name || `Gym #${contract.gym_id}`;
@@ -60,6 +130,23 @@ export default function ContractView() {
 
   return (
     <div className="p-8 space-y-8">
+
+      {successMessage && (
+        <Alert className="border-green-500 bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-300">
+          <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+          <AlertTitle>Success</AlertTitle>
+          <AlertDescription>{successMessage}</AlertDescription>
+        </Alert>
+      )}
+
+      {error && (
+        <Alert variant="destructive">
+          <XCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
       {/* View Header block */}
       <div className="flex justify-between items-center border-b pb-4">
         <div className="flex items-center gap-3">
@@ -68,7 +155,7 @@ export default function ContractView() {
             <h1 className="text-3xl font-bold tracking-tight">Sponsorship Contracts</h1>
           </div>
         </div>
-        <Button onClick={() => console.log("Open Contract Modal")} className="gap-2">
+        <Button onClick={() => setIsSheetOpen(true)} className="gap-2">
           <Plus className="h-4 w-4" />
           Add Contract
         </Button>
@@ -90,55 +177,118 @@ export default function ContractView() {
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-                {gymContracts.map((contract) => (
-                  <Card 
-                    key={contract.contract_id} 
-                    className="flex flex-col justify-between p-3 h-[175px] w-full min-w-[140px] max-w-[180px] hover:border-primary/40 transition-colors"
-                  >
-                    <CardContent className="p-0 flex flex-col h-full justify-between">
-                      
-                      {/* Name */}
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-mono text-muted-foreground">#{contract.contract_id}</span>
-                          <span className="text-[10px] bg-emerald-500/10 text-emerald-600 font-bold px-1.5 py-0.5 rounded">Active</span>
-                        </div>
-                        <h3 className="font-bold text-sm tracking-tight text-card-foreground line-clamp-2 mt-0.5" title={contract.sponsor?.name}>
-                          {contract.sponsor?.name || `Sponsor #${contract.sponsor_id}`}
-                        </h3>
-                      </div>
+                {gymContracts.map((contract) => {
+                  const isSelected = selectedContract?.contract_id === contract.contract_id;
 
-                      {/* Money */}
-                      <div className="my-2">
-                        <div className="flex items-center gap-1 text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
-                          <Coins className="w-3 h-3 text-amber-500" />
-                          <span>Payout</span>
+                  return (
+                    <Card 
+                      key={contract.contract_id} 
+                      onClick={() => {
+                        setSelectedContract(contract);
+                        setIsActionsOpen(true);
+                      }}
+                      className={`flex flex-col justify-between p-3 h-[175px] w-full min-w-[140px] max-w-[180px] transition-all cursor-pointer ${
+                        isSelected && isActionsOpen ? 'border-primary bg-primary/5' : 'hover:border-primary/40'
+                      }`}
+                    >
+                      {isSelected && isActionsOpen ? (
+                        <div className="flex flex-col justify-center items-center h-full space-y-2" onClick={(e) => e.stopPropagation()}>
+                          <TableActions
+                            label="Equipment"
+                            onEdit={() => handleEdit(contract.contract_id)}
+                            onDelete={() => handleDeleteClick(contract.contract_id)}
+                          />
+                          <button 
+                            onClick={() => {
+                              setIsActionsOpen(false);
+                              setSelectedContract(null);
+                            }}
+                            className="text-xs text-muted-foreground underline mt-1 hover:text-foreground"
+                          >
+                            Cancel
+                          </button>
                         </div>
-                        <div className="text-base font-extrabold text-foreground tracking-tight">
-                          {Number(contract.payment || 0).toLocaleString()} zł
-                        </div>
-                      </div>
+                      ) : (
+                        <CardContent className="p-0 flex flex-col h-full justify-between">
+                          
+                          {/* Name */}
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-mono text-muted-foreground">#{contract.contract_id}</span>
+                              {new Date(contract.expiration_date) > new Date() ? 
+                                <span className="text-[10px] bg-emerald-500/10 text-emerald-600 font-bold px-1.5 py-0.5 rounded">Active</span>
+                                : <span className="text-[10px] bg-red-500/10 text-red-600 font-bold px-1.5 py-0.5 rounded">Expired</span> }
+                            </div>
+                            <h3 className="font-bold text-sm tracking-tight text-card-foreground line-clamp-2 mt-0.5" title={contract.sponsor?.name}>
+                              {contract.sponsor?.name || `Sponsor #${contract.sponsor_id}`}
+                            </h3>
+                          </div>
 
-                      {/* Dates */}
-                      <div className="border-t pt-2 space-y-0.5 text-[11px] text-muted-foreground">
-                        <div className="flex justify-between items-center">
-                          <span className="flex items-center gap-1"><Calendar className="w-2.5 h-2.5" /> Start:</span>
-                          <span className="font-mono text-right">{contract.contract_date.slice(2, 10)}</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="flex items-center gap-1"><Calendar className="w-2.5 h-2.5" /> End:</span>
-                          <span className="font-mono text-right text-destructive font-medium">{contract.expiration_date.slice(2, 10)}</span>
-                        </div>
-                      </div>
+                          {/* Money */}
+                          <div className="my-2">
+                            <div className="flex items-center gap-1 text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
+                              <Coins className="w-3 h-3 text-amber-500" />
+                              <span>Payout</span>
+                            </div>
+                            <div className="text-base font-extrabold text-foreground tracking-tight">
+                              {Number(contract.payment || 0).toLocaleString()} zł
+                            </div>
+                          </div>
 
-                    </CardContent>
-                  </Card>
-                ))}
+                          {/* Dates */}
+                          <div className="border-t pt-2 space-y-0.5 text-[11px] text-muted-foreground">
+                            <div className="flex justify-between items-center">
+                              <span className="flex items-center gap-1"><Calendar className="w-2.5 h-2.5" /> Start:</span>
+                              <span className="font-mono text-right">{contract.contract_date.slice(2, 10)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="flex items-center gap-1"><Calendar className="w-2.5 h-2.5" /> End:</span>
+                              <span className="font-mono text-right text-destructive font-medium">{contract.expiration_date.slice(2, 10)}</span>
+                            </div>
+                          </div>
+
+                        </CardContent>
+                      )}
+                    </Card>
+                  );
+                })}
               </div>
             </div>
           ))}
         </div>
       )}
+      
+      <Sheet open={isSheetOpen} onOpenChange={handleSheetClose}>
+        <SheetContent side="right" className="sm:max-w-[425px] overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>
+              {isEditing ? "Edit Contract" : "Add New Contract"}
+            </SheetTitle>
+            <SheetDescription>
+              {isEditing
+                ? "Update the contract details. Modify date, type, duration, capacity, or room."
+                : "Add a new contract. Fill in all the details below."}
+            </SheetDescription>
+          </SheetHeader>
+          {isEditing ? (
+            <EditContractForm
+              contractId={editingContractId}
+              onSuccess={handleSuccess}
+            />
+          ) : (
+            <ContractForm onSuccess={handleSuccess} />
+          )}
+        </SheetContent>
+      </Sheet>
+
+      <DeleteConfirmDialog
+        isOpen={deletingContractId !== null}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Contract"
+        description={`Are you sure you want to delete contract "${contractToDelete?.gym?.name} ${contractToDelete?.sponsor?.name} #${contractToDelete?.contract_id}"? This action cannot be undone.`}
+        isLoading={isDeleting}
+      />
     </div>
   );
 }
