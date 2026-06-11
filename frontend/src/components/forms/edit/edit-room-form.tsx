@@ -24,6 +24,12 @@ export function EditRoomForm({ roomId, onSuccess }: EditRoomFormProps) {
     const [gyms, setGyms] = useState<Gym[]>([]);
     const [selectedGym, setSelectedGym] = useState<string>("");
 
+    // Client-side validation errors
+    const [validationErrors, setValidationErrors] = useState<{
+        name?: string;
+        gym_id?: string;
+    }>({});
+
     useEffect(() => {
         const loadData = async () => {
             try {
@@ -46,16 +52,54 @@ export function EditRoomForm({ roomId, onSuccess }: EditRoomFormProps) {
         loadData();
     }, [roomId]);
 
+    const validateForm = (formData: FormData): boolean => {
+        const errors: { name?: string; gym_id?: string } = {};
+
+        // Validate name
+        const name = formData.get("name") as string;
+        if (!name || name.trim() === "") {
+            errors.name = "Room name is required";
+        } else if (name.length > 64) {
+            errors.name = "Room name cannot exceed 64 characters";
+        } else if (name.length < 2) {
+            errors.name = "Room name must be at least 2 characters";
+        } else if (!/^[a-zA-Z0-9\s\-_]+$/.test(name)) {
+            errors.name = "Room name can only contain letters, numbers, spaces, hyphens, and underscores";
+        }
+
+        // Validate gym_id
+        const gymId = formData.get("gym_id") as string;
+        if (!gymId || gymId === "") {
+            errors.gym_id = "Please select a gym";
+        } else {
+            const gymIdNum = parseInt(gymId);
+            if (isNaN(gymIdNum) || gymIdNum <= 0) {
+                errors.gym_id = "Invalid gym selection";
+            } else if (!gyms.some(g => g.gym_id === gymIdNum)) {
+                errors.gym_id = "Selected gym does not exist";
+            }
+        }
+
+        setValidationErrors(errors);
+        return Object.keys(errors).length === 0;
+    };
+
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        setIsLoading(true);
         setError(null);
         setSuccessMessage(null);
 
         const formData = new FormData(e.currentTarget);
 
+        // Client-side validation
+        if (!validateForm(formData)) {
+            return;
+        }
+
+        setIsLoading(true);
+
         const payload = {
-            name: formData.get("name") as string,
+            name: (formData.get("name") as string).trim(),
             gym_id: parseInt(formData.get("gym_id") as string),
         };
 
@@ -66,6 +110,17 @@ export function EditRoomForm({ roomId, onSuccess }: EditRoomFormProps) {
             setError(err instanceof Error ? err.message : "Failed to update room");
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        if (validationErrors.name) {
+            setValidationErrors(prev => ({ ...prev, name: undefined }));
+        }
+        // Prevent XSS by sanitizing input
+        if (value.includes('<') || value.includes('>')) {
+            setValidationErrors(prev => ({ ...prev, name: "HTML tags are not allowed" }));
         }
     };
 
@@ -87,25 +142,23 @@ export function EditRoomForm({ roomId, onSuccess }: EditRoomFormProps) {
                 </Alert>
             )}
 
-            {successMessage && (
-                <Alert className="mb-4 border-green-500 bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-300">
-                    <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-                    <AlertTitle>Success</AlertTitle>
-                    <AlertDescription>{successMessage}</AlertDescription>
-                </Alert>
-            )}
-
             <div className="space-y-2">
                 <label className="text-sm font-medium flex items-center gap-2">
                     <Building2 className="w-4 h-4" /> Gym
+                    <span className="text-destructive">*</span>
                 </label>
                 <select
                     name="gym_id"
                     required
                     value={selectedGym}
-                    onChange={(e) => setSelectedGym(e.target.value)}
+                    onChange={(e) => {
+                        setSelectedGym(e.target.value);
+                        if (validationErrors.gym_id) {
+                            setValidationErrors(prev => ({ ...prev, gym_id: undefined }));
+                        }
+                    }}
                     disabled={isLoading}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    className={`flex h-10 w-full rounded-md border ${validationErrors.gym_id ? 'border-destructive' : 'border-input'} bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50`}
                 >
                     <option value="">Select gym...</option>
                     {gyms.map((gym) => (
@@ -114,11 +167,15 @@ export function EditRoomForm({ roomId, onSuccess }: EditRoomFormProps) {
                         </option>
                     ))}
                 </select>
+                {validationErrors.gym_id && (
+                    <p className="text-sm text-destructive">{validationErrors.gym_id}</p>
+                )}
             </div>
 
             <div className="space-y-2">
                 <label htmlFor="name" className="text-sm font-medium flex items-center gap-2">
                     <DoorOpen className="w-4 h-4" /> Room Name
+                    <span className="text-destructive">*</span>
                 </label>
                 <Input
                     id="name"
@@ -126,13 +183,22 @@ export function EditRoomForm({ roomId, onSuccess }: EditRoomFormProps) {
                     type="text"
                     required
                     defaultValue={roomData?.name}
+                    onChange={handleNameChange}
                     disabled={isLoading}
                     maxLength={64}
+                    minLength={2}
                     placeholder="e.g., Main Studio, Yoga Room, Weight Room"
+                    className={validationErrors.name ? 'border-destructive' : ''}
+                    pattern="[a-zA-Z0-9\s\-_]+"
+                    title="Only letters, numbers, spaces, hyphens, and underscores allowed"
                 />
-                <p className="text-xs text-muted-foreground">
-                    Maximum 64 characters
-                </p>
+                {validationErrors.name ? (
+                    <p className="text-sm text-destructive">{validationErrors.name}</p>
+                ) : (
+                    <p className="text-xs text-muted-foreground">
+                        Maximum 64 characters. Letters, numbers, spaces, hyphens, and underscores only.
+                    </p>
+                )}
             </div>
 
             <Button type="submit" className="w-full" disabled={isLoading}>

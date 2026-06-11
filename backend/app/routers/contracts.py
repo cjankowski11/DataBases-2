@@ -1,15 +1,17 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, func
 from sqlalchemy.orm import joinedload
 from typing import Optional
 from datetime import date
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from ..database import get_db
 from ..models import Contract as ContractModel
 from ..models import Gym as GymModel
-from ..schemas import ContractSchema, ApiResponse
-from ..utils.error_handle import handle_error, NotFoundError
+from ..models import Gym as GymModel
+from ..schemas import ContractSchema, ApiResponse, ContractCreate, ContractUpdate
+from ..utils.error_handle import handle_error, NotFoundError, BadRequestError
 
 
 router = APIRouter(
@@ -66,7 +68,7 @@ async def get_contract(contract_id: int, db: AsyncSession = Depends(get_db)):
         query = (
             select(ContractModel)
             .options(
-                joinedload(ContractModel.gym),
+                joinedload(ContractModel.gym).joinedload(GymModel.address),
                 joinedload(ContractModel.sponsor))
             .where(ContractModel.contract_id == contract_id)
         )
@@ -85,19 +87,123 @@ async def get_contract(contract_id: int, db: AsyncSession = Depends(get_db)):
         return handle_error(e, context="get_contract")
     
 @router.post("/", response_model=ApiResponse)
-async def create_contract(contract_data: ContractSchema, db: AsyncSession = Depends(get_db)):
+async def create_contract(contract_data: ContractCreate, db: AsyncSession = Depends(get_db)):
     try:
-        new_contract = ContractModel(**contract_data.model_dump())
+        # Validate that there aren't any overlapping contracts
+        query = (
+            select(ContractModel)
+            .where(
+                ContractModel.gym_id == contract_data.gym_id,
+                ContractModel.sponsor_id == contract_data.sponsor_id,
+                ContractModel.expiration_date >= contract_data.contract_date
+            )
+        )
+        result = await db.execute(query)
+        existing_contract = result.scalars().first()
+
+        if existing_contract is not None:
+            raise BadRequestError("Overlapping contract exists for this gym and sponsor")
+
+        contract_dict = contract_data.model_dump()
+        new_contract = ContractModel(**contract_dict)
 
         db.add(new_contract)
         await db.commit()
-        await db.refresh(new_contract)
+
+        query = (
+            select(ContractModel)
+            .where(ContractModel.contract_id == new_contract.contract_id)
+            .options(
+                joinedload(ContractModel.gym).joinedload(GymModel.address),
+                joinedload(ContractModel.sponsor)
+            )
+        )
+        refreshed_result = await db.execute(query)
+        complete_contract = refreshed_result.scalar_one()
 
         return {
             "status": "SUCCEEDED",
-            "data": ContractSchema.model_validate(new_contract),
+            "data": ContractSchema.model_validate(complete_contract),
             "message": "Contract created successfully"
         }
     except Exception as e:
         await db.rollback()
         return handle_error(e, context="create_contract")
+
+@router.delete("/{contract_id}", response_model=ApiResponse)
+async def delete_contract(contract_id: int, db: AsyncSession = Depends(get_db)):
+    try:
+        result = await db.execute(
+            select(ContractModel).where(ContractModel.contract_id == contract_id)
+        )
+        contract_to_delete = result.scalar_one_or_none()
+
+        if not contract_to_delete:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Contract with ID {contract_id} not found"
+            )
+
+        await db.delete(contract_to_delete)
+        await db.commit()
+
+        return {
+            "status": "SUCCEEDED",
+            "data": None,
+            "message": "Contract deleted successfully"
+        }
+    except Exception as e:
+        await db.rollback()
+        return handle_error(e, context="delete_contract")
+    
+@router.patch("/{contract_id}", response_model=ApiResponse)
+async def update_contract(contract_id: int, contract_data: ContractUpdate, db: AsyncSession = Depends(get_db)):
+    try:
+        db_contract = await db.get(ContractModel, contract_id)
+        if not db_contract:
+            raise NotFoundError(resource="Class", id=contract_id)
+
+        update_data = contract_data.model_dump(exclude_unset=True)
+        if not update_data:
+            raise BadRequestError("No fields provided for update")
+
+        # Validate that there aren't any overlapping contracts
+        query = (
+            select(ContractModel)
+            .where(
+                ContractModel.gym_id == db_contract.gym_id,
+                ContractModel.sponsor_id == db_contract.sponsor_id,
+                ContractModel.expiration_date >= db_contract.contract_date,
+                ContractModel.contract_id != contract_id
+            )
+        )
+        result = await db.execute(query)
+        existing_contract = result.scalars().first()
+
+        if existing_contract is not None:
+            raise BadRequestError("Overlapping contract exists for this gym and sponsor")
+        
+        for key, value in update_data.items():
+            setattr(db_contract, key, value)
+
+        await db.commit()
+
+        query = (
+            select(ContractModel)
+            .options(
+                joinedload(ContractModel.gym).joinedload(GymModel.address),
+                joinedload(ContractModel.sponsor)
+            )
+            .where(ContractModel.contract_id == contract_id)
+        )
+        result = await db.execute(query)
+        full_contract = result.scalar_one()
+
+        return {
+            "status": "SUCCEEDED",
+            "data": ContractSchema.model_validate(full_contract),
+            "message": "Contract updated successfully"
+        }
+    except Exception as e:
+        await db.rollback()
+        return handle_error(e, context="update_contract")

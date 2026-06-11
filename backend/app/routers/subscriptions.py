@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 
 from ..database import get_db
 from ..models import Subscription as SubscriptionModel, ClientSubscription as ClientSubscriptionModel
-from ..schemas import SubscriptionSchema, ClientSubscriptionSchema,SubscriptionCreate,ClientSubscriptionCreate, ApiResponse
+from ..schemas import SubscriptionSchema, ClientSubscriptionSchema,SubscriptionCreate,ClientSubscriptionCreate, SubscriptionUpdate, ClientSubscriptionUpdate, ApiResponse
 from ..utils.error_handle import handle_error, NotFoundError, BadRequestError
 
 
@@ -52,6 +52,31 @@ async def get_client_subscriptions(db: AsyncSession = Depends(get_db)):
     except Exception as e:
         return handle_error(e, context="get_client_subscriptions")
 
+@router.get("/client-subscriptions/{client_subscription_id}", response_model=ApiResponse)
+async def get_client_subscription(client_subscription_id: int, db: AsyncSession = Depends(get_db)):
+    try:
+        query = (
+            select(ClientSubscriptionModel)
+            .options(
+                joinedload(ClientSubscriptionModel.client),
+                joinedload(ClientSubscriptionModel.subscription)
+            )
+            .where(ClientSubscriptionModel.client_subscription_id == client_subscription_id)
+        )
+        result = await db.execute(query)
+        client_sub = result.scalar_one_or_none()
+
+        if not client_sub:
+            raise NotFoundError(resource="Client Subscription", id=client_subscription_id)
+
+        return {
+            "status": "SUCCEEDED",
+            "data": ClientSubscriptionSchema.model_validate(client_sub),
+            "message": "Client subscription found"
+        }
+    except Exception as e:
+        return handle_error(e, context="get_client_subscription")
+
 @router.get("/{subscription_id}", response_model=ApiResponse)
 async def get_subscription(subscription_id: int, db: AsyncSession = Depends(get_db)):
     try:
@@ -81,12 +106,41 @@ async def create_subscription(
             await db.commit()
             await db.refresh(new_sub)
             return {
-                "status":"SUCCESS",
+                "status":"SUCCEEDED",
                 "data": SubscriptionSchema.model_validate(new_sub),
-                "message": "Subcription created successfully"
+                "message": "Subscription created successfully"
             }
         except Exception as e:
             return handle_error(e, context="create_subscription")
+
+@router.patch("/{subscription_id}", response_model=ApiResponse)
+async def update_subscription(
+    subscription_id: int,
+    payload: SubscriptionUpdate,
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        db_sub = await db.get(SubscriptionModel, subscription_id)
+
+        if not db_sub:
+            raise NotFoundError(resource="Subscription", id=subscription_id)
+
+        update_data = payload.model_dump(exclude_unset=True)
+
+        for key, value in update_data.items():
+            setattr(db_sub, key, value)
+
+        await db.commit()
+        await db.refresh(db_sub)
+
+        return {
+            "status": "SUCCEEDED",
+            "data": SubscriptionSchema.model_validate(db_sub),
+            "message": "Subscription updated successfully"
+        }
+    except Exception as e:
+        await db.rollback()
+        return handle_error(e, context="update_subscription")
 
 @router.post("/client-subscriptions", response_model=ApiResponse, status_code=201)
 async def create_client_subscription(
@@ -128,6 +182,55 @@ async def create_client_subscription(
         }
     except Exception as e:
         return handle_error(e, context="create_client_subscription")
+
+@router.patch("/client-subscriptions/{client_subscription_id}", response_model=ApiResponse)
+async def update_client_subscription(
+    client_subscription_id: int,
+    payload: ClientSubscriptionUpdate,
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        db_client_sub = await db.get(ClientSubscriptionModel, client_subscription_id)
+
+        if not db_client_sub:
+            raise NotFoundError(resource="Client Subscription", id=client_subscription_id)
+
+        update_data = payload.model_dump(exclude_unset=True)
+
+        if "subscription_id" in update_data and update_data["subscription_id"] is not None:
+            sub = await db.get(SubscriptionModel, update_data["subscription_id"])
+            if not sub:
+                raise NotFoundError(resource="Subscription", id=update_data["subscription_id"])
+
+        if "receptionist_employee_id" in update_data:
+            employee_id_value = update_data.pop("receptionist_employee_id")
+            update_data["employee_id"] = employee_id_value
+
+        for key, value in update_data.items():
+            setattr(db_client_sub, key, value)
+
+        await db.commit()
+        await db.refresh(db_client_sub)
+
+        query = (
+            select(ClientSubscriptionModel)
+            .options(
+                joinedload(ClientSubscriptionModel.client),
+                joinedload(ClientSubscriptionModel.subscription)
+            )
+            .where(ClientSubscriptionModel.client_subscription_id == db_client_sub.client_subscription_id)
+        )
+        result = await db.execute(query)
+        full = result.scalar_one()
+
+        return {
+            "status": "SUCCEEDED",
+            "data": ClientSubscriptionSchema.model_validate(full),
+            "message": "Client subscription updated successfully"
+        }
+    except Exception as e:
+        await db.rollback()
+        return handle_error(e, context="update_client_subscription")
 
 @router.delete("/{subscription_id}", response_model=ApiResponse)
 async def delete_subscription(subscription_id: int, db: AsyncSession = Depends(get_db)):

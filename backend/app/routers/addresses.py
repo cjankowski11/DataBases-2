@@ -52,13 +52,8 @@ async def get_address(address_id: int, db: AsyncSession = Depends(get_db)):
 @router.post("/", response_model=ApiResponse)
 async def create_address(address_in: AddressCreate, db: AsyncSession = Depends(get_db)):
     try:
-        result = await db.execute(select(func.max(AddressModel.address_id)))
-        max_id = result.scalar()
-        next_id = (max_id or 0) + 1
-
-        address_data = address_in.model_dump()
-        address_data["address_id"] = next_id
-        new_address = AddressModel(**address_data)
+        addr_dict = address_in.model_dump()
+        new_address = AddressModel(**addr_dict)
         
         db.add(new_address)
         await db.commit()
