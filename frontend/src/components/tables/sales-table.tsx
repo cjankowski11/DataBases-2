@@ -7,52 +7,19 @@ import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { TablePagination } from "./table-pagination"
 import { TableActions } from "./table-actions"
-import { ClientSubscriptionService } from "@/services/gym-service"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 
 interface SalesListViewProps {
-  data: ClientSubscription[]
+  data: ClientSubscription[];
+  onEdit: (id: number) => void;
+  onDelete: (id: number) => void;
 }
 
-export function SalesListView({ data }: SalesListViewProps) {
+export function SalesListView({ data, onEdit, onDelete }: SalesListViewProps) {
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
-  const [saleToDelete, setSaleToDelete] = useState<number | string | null>(null)
 
   const totalPages = Math.ceil(data.length / itemsPerPage)
   const paginatedData = data.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-
-  const handleDeleteConfirm = async () => {
-    if (!saleToDelete) return;
-
-    try {
-      console.log("Delete finalized for sale ID: " + saleToDelete);
-      await ClientSubscriptionService.delete(saleToDelete);
-      window.location.reload();
-    } catch (error: any) {
-      let errorMessage = "An unexpected error occurred.";
-
-      if (error.response?.data?.detail) {
-        errorMessage = error.response.data.detail;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      alert(`Deletion Failed:\n${errorMessage}`);
-      console.error("Failed to delete sale:", error);
-    } finally {
-      setSaleToDelete(null);
-    }
-  };
 
   const isExpired = (date: string) => new Date(date) < new Date()
 
@@ -121,8 +88,8 @@ export function SalesListView({ data }: SalesListViewProps) {
                 <TableCell className="text-right">
                   <TableActions
                     label="Sale Management"
-                    onEdit={() => console.log("Edit " + s.client_subscription_id)}
-                    onDelete={() => setSaleToDelete(s.client_subscription_id)}
+                    onEdit={() => onEdit(s.client_subscription_id)}
+                    onDelete={() => onDelete(s.client_subscription_id)}
                   />
                 </TableCell>
               </TableRow>
@@ -141,29 +108,6 @@ export function SalesListView({ data }: SalesListViewProps) {
         totalPages={totalPages}
         onPageChange={setCurrentPage}
       />
-
-      <AlertDialog 
-        open={saleToDelete !== null} 
-        onOpenChange={(open) => { if (!open) setSaleToDelete(null); }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Do you want to delete this sale?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDeleteConfirm}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }

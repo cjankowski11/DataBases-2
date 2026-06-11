@@ -3,7 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EquipmentService } from "@/services/gym-service";
 import type { Gym } from "@/types/gym-types";
-import { Loader2, Dumbbell, Cog, Package, CheckCircle2 } from "lucide-react";
+import { Loader2, Dumbbell, Cog, Package, PlusCircle, Tag, Factory, Hash, Coins, Building2, Activity, Calendar, Weight, Target, Layers, CheckCircle, XCircle } from "lucide-react";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/ui/alert";
 
 type EquipmentType = "weight" | "machine" | "accessory";
 
@@ -16,22 +21,28 @@ export function EquipmentForm({ onSuccess, gyms }: EquipmentFormProps) {
   const [type, setType] = useState<EquipmentType>("weight");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [dateProduced, setDateProduced] = useState("");
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
-    
+    setSuccessMessage(null);
+
     const formData = new FormData(e.currentTarget);
-    
+    const price = parseFloat(formData.get("price") as string);
+    const formDateProduced = formData.get("date_produced") as string;
+    const dateBought = formData.get("date_bought") as string;
+
     const commonData = {
       name: formData.get("name") as string,
       producer: formData.get("producer") as string,
       serial_number: parseInt(formData.get("serial_number") as string),
-      price: parseFloat(formData.get("price") as string),
+      price,
       state: formData.get("state") as string,
-      date_bought: formData.get("date_bought") as string,
-      date_produced: formData.get("date_produced") as string,
+      date_bought: dateBought,
+      date_produced: formDateProduced,
       gym_id: parseInt(formData.get("gym_id") as string),
       equipment_type: type
     };
@@ -39,16 +50,18 @@ export function EquipmentForm({ onSuccess, gyms }: EquipmentFormProps) {
     try {
       let result;
       if (type === "weight") {
+        const weight = parseFloat(formData.get("weight") as string);
         result = await EquipmentService.createWeight({
           ...commonData,
-          weight: parseFloat(formData.get("weight") as string),
+          weight,
           type: formData.get("weight_sub_type") as string,
           material: formData.get("material") as string
         });
       } else if (type === "machine") {
+        const maxWeight = parseInt(formData.get("max_weight") as string);
         result = await EquipmentService.createMachine({
           ...commonData,
-          max_weight: parseInt(formData.get("max_weight") as string),
+          max_weight: maxWeight,
           bodypart_target: formData.get("bodypart_target") as string
         });
       } else {
@@ -62,6 +75,7 @@ export function EquipmentForm({ onSuccess, gyms }: EquipmentFormProps) {
         throw new Error(result.message || "Failed to create equipment");
       }
 
+      setSuccessMessage("Equipment created successfully!");
       onSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unexpected error occurred");
@@ -73,9 +87,19 @@ export function EquipmentForm({ onSuccess, gyms }: EquipmentFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6 py-4">
       {error && (
-        <div className="p-3 rounded-md bg-destructive/10 text-destructive text-sm font-medium border border-destructive/20">
-          {error}
-        </div>
+        <Alert variant="destructive" className="mb-4">
+          <XCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {successMessage && (
+        <Alert className="mb-4 border-green-500 bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-300">
+          <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+          <AlertTitle>Success</AlertTitle>
+          <AlertDescription>{successMessage}</AlertDescription>
+        </Alert>
       )}
 
       {/* Type Selector */}
@@ -100,26 +124,36 @@ export function EquipmentForm({ onSuccess, gyms }: EquipmentFormProps) {
       {/* Common Fields */}
       <div className="grid grid-cols-2 gap-4">
         <div className="col-span-2 space-y-2">
-          <label className="text-sm font-medium">Equipment Name</label>
+          <label className="text-sm font-medium flex items-center gap-2">
+            <Tag className="w-4 h-4" /> Equipment Name
+          </label>
           <Input name="name" placeholder="e.g. Olympic Bar" required disabled={isLoading} />
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-medium">Producer</label>
+          <label className="text-sm font-medium flex items-center gap-2">
+            <Factory className="w-4 h-4" /> Producer
+          </label>
           <Input name="producer" placeholder="e.g. Rogue" required disabled={isLoading} />
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-medium">Serial Number</label>
-          <Input name="serial_number" type="number" placeholder="12345" required disabled={isLoading} />
+          <label className="text-sm font-medium flex items-center gap-2">
+            <Hash className="w-4 h-4" /> Serial Number
+          </label>
+          <Input name="serial_number" type="number" min="0" placeholder="12345" required disabled={isLoading} />
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-medium">Price (PLN)</label>
-          <Input name="price" type="number" step="0.01" placeholder="99.99" required disabled={isLoading} />
+          <label className="text-sm font-medium flex items-center gap-2">
+            <Coins className="w-4 h-4" /> Price (PLN)
+          </label>
+          <Input name="price" type="number" step="0.01" min="0" placeholder="99.99" required disabled={isLoading} />
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-medium">Gym Location</label>
-          <select 
-            name="gym_id" 
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" 
+          <label className="text-sm font-medium flex items-center gap-2">
+            <Building2 className="w-4 h-4" /> Gym Location
+          </label>
+          <select
+            name="gym_id"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             required
             disabled={isLoading}
           >
@@ -128,38 +162,65 @@ export function EquipmentForm({ onSuccess, gyms }: EquipmentFormProps) {
           </select>
         </div>
         <div className="col-span-2 space-y-2">
-          <label className="text-sm font-medium">Condition / State</label>
+          <label className="text-sm font-medium flex items-center gap-2">
+            <Activity className="w-4 h-4" /> Condition / State
+          </label>
           <Input name="state" placeholder="e.g. New, Used" required disabled={isLoading} />
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 border-t pt-4">
         <div className="space-y-2">
-          <label className="text-sm font-medium">Date Produced</label>
-          <Input name="date_produced" type="date" required disabled={isLoading} />
+          <label className="text-sm font-medium flex items-center gap-2">
+            <Calendar className="w-4 h-4" /> Date Produced
+          </label>
+          <Input
+            name="date_produced"
+            type="date"
+            max={new Date().toISOString().split("T")[0]}
+            value={dateProduced}
+            onChange={(e) => setDateProduced(e.target.value)}
+            required
+            disabled={isLoading}
+          />
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-medium">Date Bought</label>
-          <Input name="date_bought" type="date" required disabled={isLoading} />
+          <label className="text-sm font-medium flex items-center gap-2">
+            <Calendar className="w-4 h-4" /> Date Bought
+          </label>
+          <Input
+            name="date_bought"
+            type="date"
+            min={dateProduced}
+            max={new Date().toISOString().split("T")[0]}
+            required
+            disabled={isLoading}
+          />
         </div>
       </div>
 
       {/* Specific fields */}
       <div className="space-y-4 border-t pt-4 bg-primary/5 p-4 rounded-xl">
         <p className="text-xs font-bold uppercase text-primary">Specific details for {type}</p>
-        
+
         {type === "weight" && (
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Weight (kg)</label>
-              <Input name="weight" type="number" step="0.1" placeholder="20" required disabled={isLoading} />
+              <label className="text-sm font-medium flex items-center gap-2">
+                <Weight className="w-4 h-4" /> Weight (kg)
+              </label>
+              <Input name="weight" type="number" step="0.1" min="0.1" placeholder="20" required disabled={isLoading} />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Material</label>
+              <label className="text-sm font-medium flex items-center gap-2">
+                <Layers className="w-4 h-4" /> Material
+              </label>
               <Input name="material" placeholder="e.g. Rubber" required disabled={isLoading} />
             </div>
             <div className="col-span-2 space-y-2">
-              <label className="text-sm font-medium">Weight Type</label>
+              <label className="text-sm font-medium flex items-center gap-2">
+                <Tag className="w-4 h-4" /> Weight Type
+              </label>
               <Input name="weight_sub_type" placeholder="e.g. Plate, Dumbbell, Kettlebell" required disabled={isLoading} />
             </div>
           </div>
@@ -168,11 +229,15 @@ export function EquipmentForm({ onSuccess, gyms }: EquipmentFormProps) {
         {type === "machine" && (
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Max Weight (kg)</label>
-              <Input name="max_weight" type="number" placeholder="200" required disabled={isLoading} />
+              <label className="text-sm font-medium flex items-center gap-2">
+                <Weight className="w-4 h-4" /> Max Weight (kg)
+              </label>
+              <Input name="max_weight" type="number" min="1" placeholder="200" required disabled={isLoading} />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Target Body Part</label>
+              <label className="text-sm font-medium flex items-center gap-2">
+                <Target className="w-4 h-4" /> Target Body Part
+              </label>
               <Input name="bodypart_target" placeholder="e.g. Legs, Chest" required disabled={isLoading} />
             </div>
           </div>
@@ -180,7 +245,9 @@ export function EquipmentForm({ onSuccess, gyms }: EquipmentFormProps) {
 
         {type === "accessory" && (
           <div className="space-y-2">
-            <label className="text-sm font-medium">Accessory Category</label>
+            <label className="text-sm font-medium flex items-center gap-2">
+              <Tag className="w-4 h-4" /> Accessory Category
+            </label>
             <Input name="acc_type" placeholder="e.g. Yoga Mat, Lifting Belt" required disabled={isLoading} />
           </div>
         )}
@@ -190,12 +257,12 @@ export function EquipmentForm({ onSuccess, gyms }: EquipmentFormProps) {
         {isLoading ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Adding...
+            Creating equipment...
           </>
         ) : (
           <>
-            <CheckCircle2 className="mr-2 h-4 w-4" />
-            Save {type.charAt(0).toUpperCase() + type.slice(1)}
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Create {type.charAt(0).toUpperCase() + type.slice(1)}
           </>
         )}
       </Button>

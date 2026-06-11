@@ -2,7 +2,12 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SubscriptionService } from "@/services/gym-service";
-import { Loader2, CheckCircle2 } from "lucide-react";
+import { Loader2, PlusCircle, Tag, Coins, Timer, Calendar, CheckCircle, XCircle } from "lucide-react";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/ui/alert";
 
 interface SubscriptionFormProps {
   onSuccess: () => void;
@@ -11,23 +16,29 @@ interface SubscriptionFormProps {
 export function SubscriptionForm({ onSuccess }: SubscriptionFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
+    setSuccessMessage(null);
 
     const formData = new FormData(e.currentTarget);
-    
+    const price = parseFloat(formData.get("price") as string);
+    const duration = parseInt(formData.get("duration") as string);
+    const entryUntil = formData.get("entry_until") as string;
+
     const payload = {
       name: formData.get("name") as string,
-      price: parseFloat(formData.get("price") as string),
-      duration: parseInt(formData.get("duration") as string),
-      entry_until: formData.get("entry_until") || null,
+      price,
+      duration,
+      entry_until: entryUntil || null,
     };
 
     try {
       await SubscriptionService.create(payload);
+      setSuccessMessage("Subscription created successfully!");
       onSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create subscription");
@@ -37,16 +48,26 @@ export function SubscriptionForm({ onSuccess }: SubscriptionFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5 py-4">
+    <form onSubmit={handleSubmit} className="space-y-6 py-4">
       {error && (
-        <div className="p-3 rounded-md bg-destructive/10 text-destructive text-sm font-medium border border-destructive/20">
-          {error}
-        </div>
+        <Alert variant="destructive" className="mb-4">
+          <XCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {successMessage && (
+        <Alert className="mb-4 border-green-500 bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-300">
+          <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+          <AlertTitle>Success</AlertTitle>
+          <AlertDescription>{successMessage}</AlertDescription>
+        </Alert>
       )}
 
       <div className="space-y-2">
-        <label htmlFor="name" className="text-sm font-medium">
-          Subscription Name
+        <label htmlFor="name" className="text-sm font-medium flex items-center gap-2">
+          <Tag className="w-4 h-4" /> Subscription Name
         </label>
         <Input
           id="name"
@@ -59,13 +80,14 @@ export function SubscriptionForm({ onSuccess }: SubscriptionFormProps) {
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <label htmlFor="price" className="text-sm font-medium">
-            Price (PLN)
+          <label htmlFor="price" className="text-sm font-medium flex items-center gap-2">
+            <Coins className="w-4 h-4" /> Price (PLN)
           </label>
           <Input
             id="price"
             name="price"
             type="number"
+            min="0"
             step="0.01"
             placeholder="149.99"
             required
@@ -73,13 +95,14 @@ export function SubscriptionForm({ onSuccess }: SubscriptionFormProps) {
           />
         </div>
         <div className="space-y-2">
-          <label htmlFor="duration" className="text-sm font-medium">
-            Duration (Days)
+          <label htmlFor="duration" className="text-sm font-medium flex items-center gap-2">
+            <Timer className="w-4 h-4" /> Duration (Days)
           </label>
           <Input
             id="duration"
             name="duration"
             type="number"
+            min="1"
             placeholder="30"
             required
             disabled={isLoading}
@@ -88,13 +111,14 @@ export function SubscriptionForm({ onSuccess }: SubscriptionFormProps) {
       </div>
 
       <div className="space-y-2">
-        <label htmlFor="entry_until" className="text-sm font-medium">
-          Valid Until Date (Optional)
+        <label htmlFor="entry_until" className="text-sm font-medium flex items-center gap-2">
+          <Calendar className="w-4 h-4" /> Valid Until Date (Optional)
         </label>
         <Input
           id="entry_until"
           name="entry_until"
           type="date"
+          min={new Date().toISOString().split("T")[0]}
           disabled={isLoading}
         />
       </div>
@@ -103,12 +127,12 @@ export function SubscriptionForm({ onSuccess }: SubscriptionFormProps) {
         {isLoading ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Creating...
+            Creating subscription...
           </>
         ) : (
           <>
-            <CheckCircle2 className="mr-2 h-4 w-4" />
-            Save Subscription
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Create Subscription
           </>
         )}
       </Button>
