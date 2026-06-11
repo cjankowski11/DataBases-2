@@ -133,11 +133,11 @@ class EmployeeCreate(EmployeeBase):
         return v
 
 class EmployeeUpdate(EmployeeBase):
-    pass
-    # name: Optional[str] = None
-    # surname: Optional[str] = None
-    # gender: Optional[Literal["M", "F"]] = None
-    # is_employed: Optional[bool] = None
+    name: Optional[str] = None
+    surname: Optional[str] = None
+    gender: Optional[Literal["M", "F"]] = None
+    is_employed: Optional[bool] = None
+    birth_date: Optional[date] = None
 
 class EmployeeSchema(EmployeeBase):
     employee_id: int
@@ -154,6 +154,9 @@ class ReceptionistSchema(EmployeeSchema, ReceptionistBase):
 
 class ReceptionistCreate(EmployeeCreate):
     shift: str
+
+class ReceptionistUpdate(EmployeeUpdate, ReceptionistBase):
+    pass
     
 class TrainerBase(BaseModel):
     specialization: str
@@ -165,6 +168,9 @@ class TrainerSchema(EmployeeSchema, TrainerBase):
 class TrainerCreate(EmployeeCreate, TrainerBase):
     pass
 
+class TrainerUpdate(EmployeeUpdate):
+    specialization: Optional[str] = None
+    hourly_wage: Optional[Decimal] = None
 
 EmployeeUnion = Union[EmployeeSchema, ReceptionistSchema, TrainerSchema]
 

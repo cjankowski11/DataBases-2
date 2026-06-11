@@ -9,10 +9,11 @@ import { TableActions } from "./table-actions"
 
 interface ReceptionistListViewProps {
   data: Receptionist[]
+  onEdit: (id: number | string) => void 
   onDelete: (id: number | string) => void 
 }
 
-export function ReceptionistListView({ data = [], onDelete }: ReceptionistListViewProps) { 
+export function ReceptionistListView({ data = [], onEdit, onDelete }: ReceptionistListViewProps) { 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -74,7 +75,7 @@ export function ReceptionistListView({ data = [], onDelete }: ReceptionistListVi
                 <TableCell className="text-right">
                   <TableActions
                     label="Receptionist"
-                    onEdit={() => console.log("Edit", emp.employee_id)}
+                    onEdit={() => onEdit(emp.employee_id)} 
                     onDelete={() => onDelete(emp.employee_id)} 
                   />
                 </TableCell>

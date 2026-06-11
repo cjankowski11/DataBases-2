@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func
 from sqlalchemy.orm import joinedload, with_polymorphic
-from typing import Optional, List
+from typing import Optional, List, Union
 from datetime import date
 from decimal import Decimal
 
@@ -19,7 +19,10 @@ from ..schemas import (
     ReceptionistSchema,
     EmployeeCreate,
     ReceptionistCreate,
-    TrainerCreate
+    TrainerCreate,
+    EmployeeUpdate,
+    ReceptionistUpdate,
+    TrainerUpdate
 )
 from ..utils.error_handle import handle_error, NotFoundError
 
@@ -202,6 +205,47 @@ async def create_trainer(trainer_in: TrainerCreate, db: AsyncSession = Depends(g
     except Exception as e:
         await db.rollback()
         return handle_error(e, context="create_trainer")
+
+@router.patch("/{employee_id}", response_model=ApiResponse)
+async def update_employee(
+    employee_id: int, 
+    employee_update: Union[TrainerUpdate, ReceptionistUpdate, EmployeeUpdate], 
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+
+        poly = with_polymorphic(EmployeeModel, [TrainerModel, ReceptionistModel])
+        query = select(poly).where(poly.employee_id == employee_id)
+        
+        result = await db.execute(query)
+        employee = result.scalars().unique().one_or_none()
+
+        if not employee:
+            raise NotFoundError(resource="Employee", id=employee_id)
+
+        update_data = employee_update.model_dump(exclude_unset=True)
+
+        for key, value in update_data.items():
+            setattr(employee, key, value)
+
+        await db.commit()
+        await db.refresh(employee)
+
+        if isinstance(employee, TrainerModel):
+            validated_data = TrainerSchema.model_validate(employee)
+        elif isinstance(employee, ReceptionistModel):
+            validated_data = ReceptionistSchema.model_validate(employee)
+        else:
+            validated_data = EmployeeSchema.model_validate(employee)
+
+        return {
+            "status": "SUCCEEDED",
+            "data": validated_data,
+            "message": "Employee updated successfully"
+        }
+    except Exception as e:
+        await db.rollback()
+        return handle_error(e, context="update_employee")
     
 @router.delete("/{employee_id}", response_model=ApiResponse)
 async def delete_employee(employee_id: int, db: AsyncSession = Depends(get_db)):

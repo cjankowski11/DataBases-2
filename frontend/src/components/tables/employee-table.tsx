@@ -7,13 +7,13 @@ import { useState } from "react"
 import { TablePagination } from "./table-pagination"
 import { TableActions } from "./table-actions"
 
-
 interface EmployeeListViewProps {
   data: Employee[]
+  onEdit: (id: number | string) => void 
   onDelete: (id: number | string) => void 
 }
 
-export function EmployeeListView({ data = [] , onDelete}: EmployeeListViewProps) {
+export function EmployeeListView({ data = [], onEdit, onDelete }: EmployeeListViewProps) { 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -67,11 +67,10 @@ export function EmployeeListView({ data = [] , onDelete}: EmployeeListViewProps)
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                  {/* 3. Przekazujemy prawdziwą funkcję onDelete zamiast console.log */}
                   <TableActions
                     label="Employee"
-                    onEdit={() => console.log("Edit", emp.employee_id)}
-                    onDelete={() => onDelete(emp.employee_id)} // <-- ZMIENIONE
+                    onEdit={() => onEdit(emp.employee_id)} 
+                    onDelete={() => onDelete(emp.employee_id)}
                   />
                 </TableCell>
               </TableRow>

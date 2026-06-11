@@ -9,10 +9,11 @@ import { TableActions } from "./table-actions"
 
 interface TrainerListViewProps {
   data: Trainer[]
-  onDelete: (id: number | string) => void // <-- DODANE
+  onEdit: (id: number | string) => void 
+  onDelete: (id: number | string) => void 
 }
 
-export function TrainerListView({ data = [], onDelete }: TrainerListViewProps) { // <-- DODANE onDelete
+export function TrainerListView({ data = [], onEdit, onDelete }: TrainerListViewProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -78,7 +79,7 @@ export function TrainerListView({ data = [], onDelete }: TrainerListViewProps) {
                 <TableCell className="text-right">
                   <TableActions
                     label="Trainer" 
-                    onEdit={() => console.log("Edit", emp.employee_id)}
+                    onEdit={() => onEdit(emp.employee_id)}
                     onDelete={() => onDelete(emp.employee_id)} 
                   />
                 </TableCell>
