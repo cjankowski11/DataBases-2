@@ -85,6 +85,36 @@ async def get_employees(
         return handle_error(e, context="get_employees")
 
 
+@router.get("/receptionists", response_model=ApiResponse)
+async def get_receptionists_list(db: AsyncSession = Depends(get_db)):
+    try:
+        query = select(ReceptionistModel).order_by(ReceptionistModel.surname, ReceptionistModel.name)
+        result = await db.execute(query)
+        receptionists_list = result.scalars().unique().all()
+        validated_data = [ReceptionistSchema.model_validate(r) for r in receptionists_list]
+        return {
+            "status": "SUCCEEDED",
+            "data": validated_data,
+            "message": "Receptionists retrieved successfully"
+        }
+    except Exception as e:
+        return handle_error(e, context="get_receptionists_list")
+
+@router.get("/trainers", response_model=ApiResponse)
+async def get_trainers_list(db: AsyncSession = Depends(get_db)):
+    try:
+        query = select(TrainerModel).order_by(TrainerModel.surname, TrainerModel.name)
+        result = await db.execute(query)
+        trainers_list = result.scalars().unique().all()
+        validated_data = [TrainerSchema.model_validate(t) for t in trainers_list]
+        return {
+            "status": "SUCCEEDED",
+            "data": validated_data,
+            "message": "Trainers retrieved successfully"
+        }
+    except Exception as e:
+        return handle_error(e, context="get_trainers_list")
+
 @router.get("/{employee_id}", response_model=ApiResponse)
 async def get_employee(employee_id: int, db: AsyncSession = Depends(get_db)):
     try:
