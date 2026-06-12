@@ -161,7 +161,7 @@ async def update_contract(contract_id: int, contract_data: ContractUpdate, db: A
     try:
         db_contract = await db.get(ContractModel, contract_id)
         if not db_contract:
-            raise NotFoundError(resource="Class", id=contract_id)
+            raise NotFoundError(resource="Contract", id=contract_id)
 
         update_data = contract_data.model_dump(exclude_unset=True)
         if not update_data:
