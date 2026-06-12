@@ -824,9 +824,9 @@ BEGIN
     INSERT INTO address (address_id, city, street, building_number, postal_code) VALUES
         (1, 'Warsaw', 'Marszałkowska', 12, '00-001'),
         (2, 'Krakow', 'Floriańska', 7, '31-019'),
-        (3, 'Gdansk', 'Dluga', 45, '80-831'),
-        (4, 'Wroclaw', 'Swidnicka', 18, '50-066'),
-        (5, 'Warsaw', 'Gorczewska', 3, '05-082')
+        (3, 'Gdansk', 'Długa', 45, '80-831'),
+        (4, 'Wroclaw', 'Świdnicka', 18, '50-066'),
+        (5, 'Warsaw', 'Górczewska', 3, '05-082')
     ON CONFLICT DO NOTHING;
 END;
 $$;

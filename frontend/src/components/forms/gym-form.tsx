@@ -295,19 +295,25 @@ export function GymForm({ onSuccess }: GymFormProps) {
         <label className="text-sm font-medium flex items-center gap-2">
           <LandPlot className="w-4 h-4" /> Area
         </label>
-        <Input
-          id="area"
-          type="number"
-          name="area"
-          onChange={() => {
-            if (validationErrors.area) {
-              setValidationErrors(prev => ({ ...prev, area: undefined }));
-            }
-          }}
-          disabled={isLoading}
-          placeholder="e.g., 67"
-          className={validationErrors.area ? 'border-destructive' : ''}
-        />
+        <div className="flex items-center gap-2">
+          <Input
+            id="area"
+            type="number"
+            name="area"
+            onChange={() => {
+              if (validationErrors.area) {
+                setValidationErrors(prev => ({ ...prev, area: undefined }));
+              }
+            }}
+            disabled={isLoading}
+            placeholder="e.g., 67"
+            className={validationErrors.area ? 'border-destructive' : ''}
+          />
+          <span className="text-sm text-muted-foreground whitespace-nowrap">
+            m²
+          </span>
+        </div>
+
         {validationErrors.area && (
           <p className="text-sm text-destructive">{validationErrors.area}</p>
         )}
