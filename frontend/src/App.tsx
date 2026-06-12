@@ -23,6 +23,7 @@ import TransactionsView from "@/views/transaction-view";
 import EmployeeCreateView from "@/views/employee-create-view";
 import ReceptionistCreateView from "@/views/receptionist-create-view";
 import TrainerCreateView from "@/views/trainer-create-view";
+import PersonalTrainingsView from "./views/personal-training-view";
 
 
 export default function App() {
@@ -57,6 +58,7 @@ export default function App() {
                 <Route path="/addresses" component={AddressesView}/>
                 <Route path="/sponsors" component={SponsorsView}/>
                 <Route path="/contracts" component={ContractsView}/>
+                <Route path="/personaltrainings" component={PersonalTrainingsView}/>
                 <Route path="/employees/new" component={EmployeeCreateView}/>
                 <Route path="/receptionists/new" component={ReceptionistCreateView}/>
                 <Route path="/trainers/new" component={TrainerCreateView}/>

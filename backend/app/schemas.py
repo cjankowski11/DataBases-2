@@ -215,6 +215,15 @@ class PersonalTrainingSchema(PersonalTrainingBase):
 
     model_config = {"from_attributes": True}
 
+class PersonalTrainingCreate(PersonalTrainingBase):
+    pass
+
+class PersonalTrainingUpdate(PersonalTrainingBase):
+    client_id: Optional[int] = None
+    trainer_id: Optional[int] = None
+    start_time: Optional[datetime] = None
+    duration: Optional[int] = None
+    
 class ArticleBase(BaseModel):
     name: str
     price: float

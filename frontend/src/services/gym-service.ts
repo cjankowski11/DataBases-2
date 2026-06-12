@@ -1,5 +1,5 @@
 import { ApiClient } from "./api-client";
-import type { GymClass, Room, Registration, ClassType, Subscription, Entry,Equipment, ClientSubscription, Employee, Client, Article, Stocktaking, TransactionClient, Gym, Address, Sponsor, Contract, Receptionist, Trainer } from "@/types/gym-types";
+import type { GymClass, Room, Registration, PersonalTraining, ClassType, Subscription, Entry,Equipment, ClientSubscription, Employee, Client, Article, Stocktaking, TransactionClient, Gym, Address, Sponsor, Contract, Receptionist, Trainer } from "@/types/gym-types";
 
 export const ClassService = new ApiClient<GymClass>("/classes/");
 export const RoomService = new ApiClient<Room>("/rooms/");
@@ -7,6 +7,7 @@ export const RegistrationService = new ApiClient<Registration>("/registrations/"
 export const ClassTypeService = new ApiClient<ClassType>("/class_types/");
 export const SubscriptionService = new ApiClient<Subscription>("/subscriptions/");
 export const EntryService = new ApiClient<Entry>("/entries/");
+export const PersonalTrainingService = new ApiClient<PersonalTraining>("/personaltrainings/");
 export const EquipmentService = Object.assign(new ApiClient<Equipment>("/equipment/"), {
   createWeight: async (data: any) => {
     const response = await fetch(`http://localhost:8000/equipment/weights`, {

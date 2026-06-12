@@ -175,7 +175,24 @@ export interface Trainer extends Employee {
   specialization: string;
   hourly_wage: number;
 }
-  
+
+export interface PersonalTraining {
+  personal_training_id: number;
+  client_id: number;
+  trainer_id: number;
+  duration: number;
+  start_time: string;   
+
+  client?: {
+    name: string;
+  };
+  trainer?: {
+    name: string;
+    surname: string
+    specialization?: string;
+  };
+}
+
 export interface Address {
   address_id: number;
   city: string;
