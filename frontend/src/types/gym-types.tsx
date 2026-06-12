@@ -21,6 +21,7 @@ export interface GymClass {
   class_type: ClassType;
   room: Room;
   occupancy_pct: number;
+  trainers: Trainer[];
 }
 
 export interface Registration {
@@ -170,12 +171,12 @@ export interface Employee {
 export interface Receptionist extends Employee {
   shift: string;
 }
-  
+
 export interface Trainer extends Employee {
   specialization: string;
   hourly_wage: number;
 }
-  
+
 export interface Address {
   address_id: number;
   city: string;

@@ -68,10 +68,13 @@ class ClassSchema(ClassBase):
     class_type: Optional[ClassTypeSchema] = None
     room: Optional[RoomSchema] = None
 
+    trainers: List["TrainerSchema"] = []
+
     model_config = {"from_attributes": True}
 
 class ClassCreate(ClassBase):
-    pass
+    trainer_ids: Optional[List[int]] = []
+
 
 class ClassUpdate(BaseModel):
     class_date: Optional[date] = None
@@ -79,6 +82,7 @@ class ClassUpdate(BaseModel):
     duration: Optional[int] = None
     capacity: Optional[int] = None
     room_id: Optional[int] = None
+    trainer_ids: Optional[List[int]] = None
 
 class ClientBase(BaseModel):
     name: str
@@ -169,7 +173,7 @@ class ReceptionistCreate(EmployeeCreate):
 
 class ReceptionistUpdate(EmployeeUpdate, ReceptionistBase):
     pass
-    
+
 class TrainerBase(BaseModel):
     specialization: str
     hourly_wage: Decimal
@@ -522,3 +526,5 @@ class GymUpdate(BaseModel):
     close_hour: Optional[time] = None
     address_id: Optional[int] = None
 
+
+ClassSchema.model_rebuild()
