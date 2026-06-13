@@ -4,9 +4,11 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { TablePagination } from "./table-pagination"
 import { TableActions } from "./table-actions"
+import { ArrowUpDown, ArrowDown, ArrowUp } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 interface SalesListViewProps {
   data: ClientSubscription[];
@@ -14,12 +16,39 @@ interface SalesListViewProps {
   onDelete: (id: number) => void;
 }
 
+type SortKey = "transaction_date" | "expiration_date";
+type SortDirection = "asc" | "desc" | null;
+
 export function SalesListView({ data, onEdit, onDelete }: SalesListViewProps) {
   const [currentPage, setCurrentPage] = useState(1)
+  const [sortConfig, setSortConfig] = useState<{ key: SortKey | null; direction: SortDirection }>({ key: null, direction: null })
   const itemsPerPage = 10
 
-  const totalPages = Math.ceil(data.length / itemsPerPage)
-  const paginatedData = data.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  const handleSort = (key: SortKey) => {
+    setSortConfig((prev) => {
+      if (prev.key === key) {
+        if (prev.direction === "asc") return { key, direction: "desc" };
+        if (prev.direction === "desc") return { key: null, direction: null };
+      }
+      return { key, direction: "asc" };
+    });
+  };
+
+  const sortedData = useMemo(() => {
+    if (!sortConfig.key || !sortConfig.direction) return data;
+    return [...data].sort((a, b) => {
+      const dateA = new Date(a[sortConfig.key as SortKey]).getTime();
+      const dateB = new Date(b[sortConfig.key as SortKey]).getTime();
+      if (sortConfig.direction === "asc") {
+        return dateA - dateB;
+      } else {
+        return dateB - dateA;
+      }
+    });
+  }, [data, sortConfig]);
+
+  const totalPages = Math.ceil(sortedData.length / itemsPerPage)
+  const paginatedData = sortedData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   const isExpired = (date: string) => new Date(date) < new Date()
 
@@ -36,6 +65,17 @@ export function SalesListView({ data, onEdit, onDelete }: SalesListViewProps) {
     return <Badge variant="secondary">Active</Badge>
   }
 
+  const SortIcon = ({ columnKey }: { columnKey: SortKey }) => {
+    if (sortConfig.key !== columnKey || sortConfig.direction === null) {
+      return <ArrowUpDown className="ml-2 h-4 w-4" />;
+    }
+    return sortConfig.direction === "asc" ? (
+      <ArrowUp className="ml-2 h-4 w-4" />
+    ) : (
+      <ArrowDown className="ml-2 h-4 w-4" />
+    );
+  };
+
   return (
     <div className="rounded-md border bg-card">
       <Table>
@@ -44,8 +84,26 @@ export function SalesListView({ data, onEdit, onDelete }: SalesListViewProps) {
             <TableHead>ID</TableHead>
             <TableHead>Client</TableHead>
             <TableHead>Subscription</TableHead>
-            <TableHead>Transaction Date</TableHead>
-            <TableHead>Expiration</TableHead>
+            <TableHead>
+              <Button 
+                variant="ghost" 
+                onClick={() => handleSort("transaction_date")} 
+                className="-ml-4 h-8 data-[state=open]:bg-accent font-semibold hover:bg-transparent"
+              >
+                Transaction Date
+                <SortIcon columnKey="transaction_date" />
+              </Button>
+            </TableHead>
+            <TableHead>
+              <Button 
+                variant="ghost" 
+                onClick={() => handleSort("expiration_date")} 
+                className="-ml-4 h-8 data-[state=open]:bg-accent font-semibold hover:bg-transparent"
+              >
+                Expiration
+                <SortIcon columnKey="expiration_date" />
+              </Button>
+            </TableHead>
             <TableHead>Paid</TableHead>
             <TableHead className="text-right">Status</TableHead>
             <TableHead className="text-right w-[100px]">Actions</TableHead>
