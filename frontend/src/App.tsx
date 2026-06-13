@@ -24,6 +24,7 @@ import EmployeeCreateView from "@/views/employee-create-view";
 import ReceptionistCreateView from "@/views/receptionist-create-view";
 import TrainerCreateView from "@/views/trainer-create-view";
 import PersonalTrainingsView from "./views/personal-training-view";
+import GymEmployeesDetailView from "./views/gym-employees-view";
 
 
 export default function App() {
@@ -62,6 +63,7 @@ export default function App() {
                 <Route path="/employees/new" component={EmployeeCreateView}/>
                 <Route path="/receptionists/new" component={ReceptionistCreateView}/>
                 <Route path="/trainers/new" component={TrainerCreateView}/>
+                <Route path="/gyms/:gym_id/employees" component={GymEmployeesDetailView} />
                 <Route>
                   <Redirect to="/gyms" />
                 </Route>

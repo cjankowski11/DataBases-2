@@ -193,6 +193,14 @@ export interface PersonalTraining {
   };
 }
 
+export interface GymEmployee {
+  gym_id: number;
+  employee_id: number;
+  
+  gym?: Gym;
+  employee?: Employee;
+}
+
 export interface Address {
   address_id: number;
   city: string;

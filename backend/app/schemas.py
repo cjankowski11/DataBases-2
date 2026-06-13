@@ -194,6 +194,14 @@ class GymEmployeeBase(BaseModel):
 class GymEmployeeSchema(GymEmployeeBase):
     model_config = {"from_attributes": True}
 
+class GymEmployeeCreate(GymEmployeeBase):
+    pass
+
+class GymEmployeeUpdate(BaseModel):
+    gym_id: Optional[int] = None
+    employee_id: Optional[int] = None
+
+
 class TrainerClassBase(BaseModel):
     employee_id: int
     class_id: int
@@ -223,7 +231,7 @@ class PersonalTrainingUpdate(PersonalTrainingBase):
     trainer_id: Optional[int] = None
     start_time: Optional[datetime] = None
     duration: Optional[int] = None
-    
+
 class ArticleBase(BaseModel):
     name: str
     price: float

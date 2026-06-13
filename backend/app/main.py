@@ -6,7 +6,7 @@ import asyncio
 from .routers import (rooms, classes, class_types, class_registrations,
                     addresses, gyms, contracts, sponsors,
                     clients, articles, stocktakings, transactions,  subscriptions, equipment, entries,
-                    employees, personaltrainings, receptionists, trainers)
+                    employees, personaltrainings, receptionists, trainers, gym_employment)
 
 app = FastAPI()
 
@@ -33,7 +33,7 @@ app.include_router(trainers.router)
 app.include_router(subscriptions.router)
 app.include_router(equipment.router)
 app.include_router(entries.router)
-
+app.include_router(gym_employment.router)
 app.include_router(clients.router)
 app.include_router(articles.router)
 app.include_router(stocktakings.router)

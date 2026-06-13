@@ -1,5 +1,5 @@
 import { ApiClient } from "./api-client";
-import type { GymClass, Room, Registration, PersonalTraining, ClassType, Subscription, Entry,Equipment, ClientSubscription, Employee, Client, Article, Stocktaking, TransactionClient, Gym, Address, Sponsor, Contract, Receptionist, Trainer } from "@/types/gym-types";
+import type { GymClass, Room, Registration,GymEmployee, PersonalTraining, ClassType, Subscription, Entry,Equipment, ClientSubscription, Employee, Client, Article, Stocktaking, TransactionClient, Gym, Address, Sponsor, Contract, Receptionist, Trainer } from "@/types/gym-types";
 
 export const ClassService = new ApiClient<GymClass>("/classes/");
 export const RoomService = new ApiClient<Room>("/rooms/");
@@ -8,6 +8,20 @@ export const ClassTypeService = new ApiClient<ClassType>("/class_types/");
 export const SubscriptionService = new ApiClient<Subscription>("/subscriptions/");
 export const EntryService = new ApiClient<Entry>("/entries/");
 export const PersonalTrainingService = new ApiClient<PersonalTraining>("/personaltrainings/");
+export const GymEmployeeService = Object.assign(new ApiClient<GymEmployee>("/gym-employments/"), {
+  deleteComposite: async (gymId: number, employeeId: number) => {
+    const response = await fetch(`http://localhost:8000/gym-employments/?gym_id=${gymId}&employee_id=${employeeId}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to remove employee from gym. Server status: ${response.status}`);
+    }
+
+    return response.json();
+  }
+});
 export const EquipmentService = Object.assign(new ApiClient<Equipment>("/equipment/"), {
   createWeight: async (data: any) => {
     const response = await fetch(`http://localhost:8000/equipment/weights`, {

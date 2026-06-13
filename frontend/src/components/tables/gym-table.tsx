@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { useState } from "react"
 import { TablePagination } from "./table-pagination"
 import { TableActions } from "./table-actions"
-
+import { useLocation } from "wouter";
 
 interface GymListViewProps {
   data: Gym[]
@@ -22,10 +22,13 @@ interface GymListViewProps {
 export function GymListView({ data, onEdit, onDelete }: GymListViewProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  
+  const [, setLocation] = useLocation();
 
-  const totalPages = Math.ceil(data.length / itemsPerPage);
+  const safeData = Array.isArray(data) ? data : [];
+  const totalPages = Math.ceil(safeData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedData = data.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedData = safeData.slice(startIndex, startIndex + itemsPerPage);
 
   return (
     <div className="rounded-md border bg-card">
@@ -43,8 +46,12 @@ export function GymListView({ data, onEdit, onDelete }: GymListViewProps) {
         <TableBody>
           {paginatedData.length > 0 ? (
             paginatedData.map((g) => (
-              <TableRow key={g.gym_id}>
-                {/* Gym Name nd Established Date */}
+              <TableRow 
+                key={g.gym_id}
+                className="cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => setLocation(`/gyms/${g.gym_id}/employees`)}
+              >
+                {/* Gym Name and Established Date */}
                 <TableCell className="font-medium">
                   <div className="flex flex-col">
                     <span>{g.name}</span>
@@ -98,11 +105,13 @@ export function GymListView({ data, onEdit, onDelete }: GymListViewProps) {
                 </TableCell>
 
                 <TableCell className="text-right">
-                  <TableActions
-                    label="Gym Management"
-                    onEdit={() => onEdit(g.gym_id)}
-                    onDelete={() => onDelete(g.gym_id)}
-                  />
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <TableActions
+                      label="Gym Management"
+                      onEdit={() => onEdit(g.gym_id)}
+                      onDelete={() => onDelete(g.gym_id)}
+                    />
+                  </div>
                 </TableCell>
               </TableRow>
             ))
@@ -124,4 +133,3 @@ export function GymListView({ data, onEdit, onDelete }: GymListViewProps) {
     </div>
   );
 }
-
