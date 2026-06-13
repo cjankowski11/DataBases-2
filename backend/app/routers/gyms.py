@@ -130,7 +130,7 @@ async def update_gym(gym_id: int, gym_data: GymUpdate, db: AsyncSession = Depend
     try:
         db_gym = await db.get(GymModel, gym_id)
         if not db_gym:
-            raise NotFoundError(resource="Class", id=gym_id)
+            raise NotFoundError(resource="Gym", id=gym_id)
 
         update_data = gym_data.model_dump(exclude_unset=True)
         if not update_data:

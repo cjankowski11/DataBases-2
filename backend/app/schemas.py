@@ -532,7 +532,7 @@ class ContractUpdate(BaseModel):
 
 class GymUpdate(BaseModel):
     name: Optional[str] = None
-    mail: Optional[str] = None
+    email: Optional[str] = None
     phone: Optional[str] = None
     area: Optional[int] = None
     open_hour: Optional[time] = None

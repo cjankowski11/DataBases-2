@@ -19,7 +19,6 @@ export function EditContractForm({ contractId, onSuccess }: EditContractFormProp
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingData, setIsFetchingData] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [contractData, setContractData] = useState<Contract | null>(null);
   const [selectedGym, setSelectedGym] = useState<string>("");
   const [selectedSponsor, setSelectedSponsor] = useState<string>("");

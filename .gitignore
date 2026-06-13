@@ -7,3 +7,6 @@ backend/app/__pycache__
 backend/app/routers/__pycache__
 backend/app/utils/__pycache__
 node_modules/
+backend/tests/__pycache__
+backend/tests/unit/__pycache__
+backend/tests/integration/__pycache__

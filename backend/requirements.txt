@@ -5,3 +5,8 @@ asyncpg
 psycopg2-binary
 pydantic-settings
 python-dotenv
+pytest
+pytest-cov
+pytest-mock
+pytest-asyncio
+httpx

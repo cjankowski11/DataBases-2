@@ -13,7 +13,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { GymForm } from "@/components/forms/gym-form";
-// import { EditGymForm } from "@/components/forms/edit/edit-gym-form";
+import { EditGymForm } from "@/components/forms/edit/edit-gym-form";
 import { DeleteConfirmDialog } from "@/components/forms/delete-confirm-dialog";
 
 export default function GymsView() {
@@ -165,15 +165,14 @@ export default function GymsView() {
                 : "Create a new gym. Fill in all the details below."}
             </SheetDescription>
           </SheetHeader>
-          {/* {isEditing ? (
+          {isEditing ? (
             <EditGymForm
               gymId={editingGymId}
               onSuccess={handleSuccess}
             />
           ) : (
             <GymForm onSuccess={handleSuccess} />
-          )} */}
-          <GymForm onSuccess={handleSuccess} />
+          )}
         </SheetContent>
       </Sheet>
 
