@@ -25,6 +25,9 @@ pip install -r backend/requirements.txt
 
 # W głównym katalogu:
 docker compose up --build
+
+# uruchomienie wszystkich testów
+docker compose -f docker-compose.test.yml run --rm backend_tests pytest -v
 ```
 
 ---

@@ -3,9 +3,11 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { TablePagination } from "./table-pagination"
 import { TableActions } from "./table-actions"
+import { ArrowUpDown, ArrowDown, ArrowUp } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 interface EntryListViewProps {
   data: Entry[];
@@ -13,12 +15,36 @@ interface EntryListViewProps {
   onDelete: (id: number) => void;
 }
 
+type SortOrder = "asc" | "desc" | null;
+
 export function EntryListView({ data, onEdit, onDelete }: EntryListViewProps) {
   const [currentPage, setCurrentPage] = useState(1)
+  const [sortOrder, setSortOrder] = useState<SortOrder>(null)
   const itemsPerPage = 10
 
-  const totalPages = Math.ceil(data.length / itemsPerPage)
-  const paginatedData = data.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  const handleSort = () => {
+    setSortOrder((prev) => {
+      if (prev === null) return "asc";
+      if (prev === "asc") return "desc";
+      return null;
+    });
+  };
+
+  const sortedData = useMemo(() => {
+    if (!sortOrder) return data;
+    return [...data].sort((a, b) => {
+      const dateA = new Date(a.entry_time).getTime();
+      const dateB = new Date(b.entry_time).getTime();
+      if (sortOrder === "asc") {
+        return dateA - dateB;
+      } else {
+        return dateB - dateA;
+      }
+    });
+  }, [data, sortOrder]);
+
+  const totalPages = Math.ceil(sortedData.length / itemsPerPage)
+  const paginatedData = sortedData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   const formatDateTime = (iso: string) => {
     const d = new Date(iso)
@@ -31,6 +57,12 @@ export function EntryListView({ data, onEdit, onDelete }: EntryListViewProps) {
   const isToday = (iso: string) =>
     new Date(iso).toDateString() === new Date().toDateString()
 
+  const SortIcon = () => {
+    if (sortOrder === "asc") return <ArrowUp className="ml-2 h-4 w-4" />;
+    if (sortOrder === "desc") return <ArrowDown className="ml-2 h-4 w-4" />;
+    return <ArrowUpDown className="ml-2 h-4 w-4" />;
+  };
+
   return (
     <div className="rounded-md border bg-card">
       <Table>
@@ -39,8 +71,26 @@ export function EntryListView({ data, onEdit, onDelete }: EntryListViewProps) {
             <TableHead>ID</TableHead>
             <TableHead>Client</TableHead>
             <TableHead>Gym</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead>Time</TableHead>
+            <TableHead>
+              <Button 
+                variant="ghost" 
+                onClick={handleSort} 
+                className="-ml-4 h-8 data-[state=open]:bg-accent font-semibold hover:bg-transparent"
+              >
+                Date
+                <SortIcon />
+              </Button>
+            </TableHead>
+            <TableHead>
+              <Button 
+                variant="ghost" 
+                onClick={handleSort} 
+                className="-ml-4 h-8 data-[state=open]:bg-accent font-semibold hover:bg-transparent"
+              >
+                Time
+                <SortIcon />
+              </Button>
+            </TableHead>
             <TableHead className="text-right">Status</TableHead>
             <TableHead className="text-right w-[100px]">Actions</TableHead>
           </TableRow>
