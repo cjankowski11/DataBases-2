@@ -817,17 +817,30 @@ BEGIN
 END;
 $$;
 
-
-CREATE OR REPLACE PROCEDURE generate_addresses()
+CREATE OR REPLACE PROCEDURE generate_addresses(num_rows INT DEFAULT 50)
 LANGUAGE plpgsql AS $$
+DECLARE
+    cities TEXT[] := ARRAY['Warszawa', 'Kraków', 'Gdańsk', 'Wrocław', 'Gdynia', 'Rzeszów', 'Katowice', 'Poznań', 'Łódź'];
+    i INT;
+    cities_count INT := array_length(cities, 1);
+    random_city TEXT;
+    random_street TEXT;
+    random_building INT;
+    random_postal TEXT;
 BEGIN
-    INSERT INTO address (address_id, city, street, building_number, postal_code) VALUES
-        (1, 'Warsaw', 'Marszałkowska', 12, '00-001'),
-        (2, 'Krakow', 'Floriańska', 7, '31-019'),
-        (3, 'Gdansk', 'Długa', 45, '80-831'),
-        (4, 'Wroclaw', 'Świdnicka', 18, '50-066'),
-        (5, 'Warsaw', 'Górczewska', 3, '05-082')
-    ON CONFLICT DO NOTHING;
+    FOR i IN 1..num_rows LOOP
+        random_city := cities[floor(random() * cities_count)::INT + 1];
+        random_building := floor(random() * 250) + 1;
+        random_postal := lpad(floor(random() * 99)::text, 2, '0') || '-' || lpad(floor(random() * 999)::text, 3, '0');
+
+        INSERT INTO address (city, street, building_number, postal_code) 
+        VALUES (random_city,
+            (SELECT string_agg(substring('abcdefghijklmnopqrstuvwxyz', (random() * 25 + 1)::int, 1), '')
+            FROM generate_series(1, 16)),
+            random_building, 
+            random_postal)
+        ON CONFLICT DO NOTHING;
+    END LOOP;
 END;
 $$;
 
@@ -835,10 +848,14 @@ CREATE OR REPLACE PROCEDURE generate_gyms()
 LANGUAGE plpgsql AS $$
 BEGIN
     INSERT INTO gym (gym_id, name, established, email, phone, area, open_hour, close_hour, address_id) VALUES
-        (1, 'FitZone Gym', '2015-03-12', 'contact@fitzone.com', '111111111', 60, '06:00:00', '22:00:00', 1),
-        (2, 'PowerHouse Fitness', '2018-07-25', 'info@powerhouse.pl', '222222222', 130, '05:30:00', '23:00:00', 2),
-        (3, 'Iron Temple', '2020-01-15', 'hello@irontemple.pl', '333333333', 200, '07:00:00', '21:30:00', 3),
-        (4, 'ActiveLife Club', '2012-09-05', 'office@activelife.pl', '444444444', 100, '06:30:00', '22:30:00', 4)
+        (1, 'FitZone Gym', '2015-03-12', 'contact@fitzone.com', '111111111', 2000, '06:00:00', '22:00:00', 1),
+        (2, 'PowerHouse Fitness', '2018-07-25', 'info@powerhouse.pl', '222222222', 1300, '05:30:00', '23:00:00', 2),
+        (3, 'Iron Temple', '2020-01-15', 'hello@irontemple.pl', '333333333', 1500, '07:00:00', '21:30:00', 3),
+        (4, 'ActiveLife Club', '2012-09-05', 'office@activelife.pl', '444444444', 1000, '06:30:00', '22:30:00', 4),
+        (5, 'Zdrofit Europlex', '2010-08-05', 'europlex@zdrofit.pl', '676767676', 2500, '06:00:00', '23:00:00', 6),
+        (6, 'Gym 6', '2026-06-13', 'gym6@contact.pl', '123456789', 3000, '03:40:00', '20:30:00', 7),
+        (7, 'Gym 7', '2025-05-05', 'gym7@contact.pl', '987654321', 1060, '05:44:00', '18:30:00', 8),
+        (8, 'Gym 8', '2022-11-11', 'gym8@contact.pl', '112233445', 2555, '07:50:00', '23:59:00', 9)
     ON CONFLICT DO NOTHING;
 END;
 $$;
@@ -849,25 +866,64 @@ BEGIN
     INSERT INTO sponsor(sponsor_id, name) VALUES
         (1, 'Gym Glamour'),
         (2, 'SFD'),
-        (3, 'Aliness')
-    ON CONFLICT DO NOTHING;
+        (3, 'Aliness'),
+        (4, 'Olimp Sport Nutrition'),
+        (5, 'KFD'),
+        (6, 'MyProtein'),
+        (7, 'Gymshark'),
+        (8, 'BiotechUSA'),
+        (9, 'Optimum Nutrition'),
+        (10, 'Trec Nutrition'),
+        (11, 'Bulk Powders'),
+        (12, 'Gorilla Wear'),
+        (13, 'Monster Energy'),
+        (14, 'Red Bull'),
+        (15, 'Waterrr'),
+        (16, 'Formotiva'),
+        (17, 'Ostrovit'),
+        (18, 'Under Armour'),
+        (19, 'Reebok'),
+        (20, 'Nike Training'),
+        (21, 'Puma Performance'),
+        (22, 'Gold''s Gym'),
+        (23, 'SmartShake')
+    ON CONFLICT (sponsor_id) DO NOTHING;
 END;
 $$;
 
-CREATE OR REPLACE PROCEDURE generate_contracts()
+CREATE OR REPLACE PROCEDURE generate_contracts(num_contracts INT)
 LANGUAGE plpgsql AS $$
+DECLARE
+    inserted_count INT := 0;
+    v_gym_id INT;
+    v_sponsor_id INT;
+    v_payment NUMERIC(10,2);
+    v_start_date DATE;
+    v_end_date DATE;
+    v_rows_affected INT;
 BEGIN
-    INSERT INTO contract(contract_id, gym_id, sponsor_id, payment, contract_date, expiration_date) VALUES
-        (1, 1, 1, 5000.00, '2024-01-01', '2027-01-01'),
-        (2, 1, 2, 3500.00, '2024-03-15', '2025-03-15'),
-        (3, 2, 2, 7000.00, '2023-06-01', '2026-09-01'),
-        (4, 2, 3, 4200.00, '2024-05-10', '2025-05-10'),
-        (5, 3, 1, 6000.00, '2024-02-20', '2025-02-20'),
-        (6, 4, 3, 3000.67, '2023-11-11', '2026-11-11')
-    ON CONFLICT DO NOTHING;
+    WHILE inserted_count < num_contracts LOOP
+        v_gym_id := floor(random() * 8 + 1)::INT;
+        v_sponsor_id := floor(random() * 23 + 1)::INT;
+        v_payment := round((random() * (25000 - 2000) + 2000)::numeric, 2);
+        v_start_date := CURRENT_DATE - floor(random() * 1095)::INT;
+        v_end_date := v_start_date + floor(random() * (1460 - 365) + 365)::INT;
+        BEGIN
+            INSERT INTO contract(gym_id, sponsor_id, payment, contract_date, expiration_date)
+            VALUES (v_gym_id, v_sponsor_id, v_payment, v_start_date, v_end_date)
+            ON CONFLICT DO NOTHING;
+            
+            inserted_count := inserted_count + 1;
+        EXCEPTION 
+            WHEN OTHERS THEN
+                CONTINUE; 
+        END;
+
+    END LOOP;
+    
+    RAISE NOTICE 'Successfully generated % random contracts.', inserted_count;
 END;
 $$;
-
 
 
 CREATE OR REPLACE PROCEDURE generate_employees(num_employees INT, p_employee_type TEXT)
@@ -1900,7 +1956,6 @@ CALL generate_trainers(100);
 CALL generate_employees_gyms(100);
 CALL generate_equipment(50);
 CALL generate_stocktaking();
-CALL generate_contracts();
 CALL generate_transactions(1000);
 CALL generate_client_subscriptions(500);
 CALL generate_entries(1000);
@@ -1908,6 +1963,7 @@ CALL generate_classes(400);
 CALL generate_trainers_classes(30);
 CALL generate_registrations();
 CALL generate_personal_training(50);
+CALL generate_contracts(40);
 
 DO $$
 DECLARE

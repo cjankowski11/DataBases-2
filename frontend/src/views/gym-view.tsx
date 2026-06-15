@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { GymService } from "@/services/gym-service";
 import { GymListView } from "@/components/tables/gym-table";
 import type { Gym } from "@/types/gym-types";
@@ -25,21 +25,37 @@ export default function GymsView() {
   const [editingGymId, setEditingGymId] = useState<number | null>(null);
   const [deletingGymId, setDeletingGymId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCities, setSelectedCities] = useState<string[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [hour, setHour] = useState<string>("");
+  const [appliedHour, setAppliedHour] = useState<string>("");
 
   const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        const gyms = await GymService.getAll();
-        setData(gyms);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load gyms");
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    try {
+      setIsLoading(true);
+      const gyms = await GymService.getAll();
+      setData(gyms);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load gyms");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchData();
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsSearchOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const handleEdit = (gymId: number) => {
@@ -98,6 +114,58 @@ export default function GymsView() {
     }, 300);
   };
 
+  const availableCities = useMemo(() => {
+    const cities = data.map(gym => gym.address.city).filter(Boolean);
+    return Array.from(new Set(cities));
+  }, [data]);
+
+  const filteredCityOptions = useMemo(() => {
+    return availableCities.filter(city =>
+      city.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [availableCities, searchTerm]);
+
+  const isAtHourOpen = (gym: Gym) => {
+    if (!gym.open_hour || !gym.close_hour) return false;
+    const open = gym.open_hour.slice(0, 5);
+    const close = gym.close_hour.slice(0, 5);
+    const target = appliedHour.slice(0, 5);
+    if (open < close) {
+      return target >= open && target <= close;
+    } else {
+      return target >= open || target <= close;
+    }
+  }
+
+  const filteredGyms = useMemo(() => {
+    let result = data;
+    if (selectedCities.length != 0) {
+      result = result.filter(gym => selectedCities.includes(gym.address.city));
+    }
+    if (appliedHour != "") {
+      result = result.filter(gym => isAtHourOpen(gym));
+    }
+    return result;
+  }, [data, selectedCities, appliedHour]);
+
+  const toggleCity = (city: string) => {
+    if (selectedCities.includes(city)) {
+      setSelectedCities(selectedCities.filter(c => c !== city));
+    } else {
+      setSelectedCities([...selectedCities, city]);
+    }
+  };
+
+  const removeCity = (city: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedCities(selectedCities.filter(c => c !== city));
+  };
+
+  const removeHour = () => {
+    setHour("");
+    setAppliedHour("");
+  };
+
   const isEditing = editingGymId !== null;
   const gymToDelete = deletingGymId
     ? data.find(g => g.gym_id === deletingGymId)
@@ -146,9 +214,92 @@ export default function GymsView() {
             Add Gym
         </Button>
       </div>
+      
+      <div className="flex w-full gap-4">
+        <div className="relative w-1/2" ref={containerRef}>
+          <div
+            className="min-h-[42px] p-1.5 flex flex-wrap gap-1.5 border border-gray-300 rounded-lg bg-white cursor-pointer focus-within:ring-2 focus-within:ring-primary focus-within:border-primary"
+            onClick={() => setIsSearchOpen(true)}
+          >
+            {selectedCities.map(city => (
+              <span 
+                key={city} 
+                className="flex items-center gap-1 bg-blue-100 text-blue-800 text-sm pl-2 pr-1 py-0.5 rounded-md font-medium"
+              >
+                {city}
+                <button
+                  type="button"
+                  onClick={(e) => removeCity(city, e)}
+                  className="hover:bg-blue-200 rounded p-0.5 inline-flex items-center justify-center text-blue-600"
+                >
+                  x
+                </button>
+              </span>
+            ))}
+
+            <input
+              type="text"
+              className="flex-1 bg-transparent outline-none min-w-[60px] text-sm text-gray-700 px-1"
+              placeholder={selectedCities.length === 0 ? "Filter by cities" : ""}
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setIsSearchOpen(true);
+              }}
+            />
+          </div>
+
+          {isSearchOpen && (
+            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+              {filteredCityOptions.length === 0 ? (
+                <div className="p-3 text-sm text-gray-500 text-center">No gyms found</div>
+              ) : (
+                filteredCityOptions.map(city => {
+                  const isSelected = selectedCities.includes(city);
+                  return (
+                    <div
+                      key={city}
+                      onClick={() => toggleCity(city)}
+                      className={`flex items-center justify-between px-4 py-2 text-sm cursor-pointer select-none transition-colors ${
+                        isSelected ? 'bg-blue-50 text-blue-900 font-medium' : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <span>{city}</span>
+                      {isSelected && <span className="text-blue-600 font-bold">✓</span>}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="relative w-1/2 flex items-center gap-4">
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block">
+            Open at
+          </label>
+      
+          <div className="flex items-center gap-3">
+            <input
+              type="time"
+              step="1"
+              value={hour}
+              onChange={(e) => setHour(e.target.value)}
+              className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary"
+            />
+            
+            <Button onClick={() => setAppliedHour(hour)} size="sm">
+              Apply
+            </Button>
+            {appliedHour && (
+              <Button variant="ghost" size="sm" onClick={()=>removeHour()}>Clear</Button>
+            )}
+          </div>
+        </div>
+      </div>
 
       <GymListView
-        data={data}
+        data={filteredGyms}
         onEdit={handleEdit}
         onDelete={handleDeleteClick}
       />
