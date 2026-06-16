@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { ContractService } from "@/services/gym-service";
 import type { Contract } from "@/types/gym-types";
 import { Loader2, FileText, Plus, Calendar, Coins, Building2, XCircle, CheckCircle } from "lucide-react";
@@ -17,6 +17,7 @@ import { ContractForm } from "@/components/forms/contract-form";
 import { EditContractForm } from "@/components/forms/edit/edit-contract-form";
 import { DeleteConfirmDialog } from "@/components/forms/delete-confirm-dialog";
 import { TableActions } from "@/components/tables/table-actions"
+import type { SponsorForm } from "@/components/forms/sponsor-form";
 
 export default function ContractView() {
   const [contracts, setContracts] = useState<Contract[]>([]);
@@ -29,6 +30,14 @@ export default function ContractView() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
+  const [isSearchGymOpen, setIsSearchGymOpen] = useState(false);
+  const [isSearchSponsorOpen, setIsSearchSponsorOpen] = useState(false);
+  const [searchTermGym, setSearchTermGym] = useState('');
+  const [searchTermSponsor, setSearchTermSponsor] = useState('');
+  const [selectedGyms, setSelectedGyms] = useState<string[]>([]);
+  const [selectedSponsors, setSelectedSponsors] = useState<string[]>([]);
+  const [expFilter, setExpFilter] = useState<string>('all');
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const fetchData = async () => {
     try {
@@ -46,12 +55,23 @@ export default function ContractView() {
     fetchData();
   }, []);
 
-  const handleEdit = (contractId: number) => {
-      setEditingContractId(contractId);
-      setIsSheetOpen(true);
-      setIsActionsOpen(false);
-      setSelectedContract(null);
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsSearchGymOpen(false);
+        setIsSearchSponsorOpen(false);
+      }
     };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleEdit = (contractId: number) => {
+    setEditingContractId(contractId);
+    setIsSheetOpen(true);
+    setIsActionsOpen(false);
+    setSelectedContract(null);
+  };
   
   const handleDeleteClick = (contractId: number) => {
     setDeletingContractId(contractId);
@@ -106,6 +126,72 @@ export default function ContractView() {
     }, 300);
   };
 
+  const availableGyms = useMemo(() => {
+    const gyms = contracts.map(contract => contract.gym.name).filter(Boolean);
+    return Array.from(new Set(gyms));
+  }, [contracts]);
+
+  const filteredGymOptions = useMemo(() => {
+    return availableGyms.filter(gym =>
+      gym.toLowerCase().includes(searchTermGym.toLowerCase())
+    );
+  }, [availableGyms, searchTermGym]);
+
+  const availableSponsors = useMemo(() => {
+    const sponsors = contracts.map(contract => contract.sponsor.name).filter(Boolean);
+    return Array.from(new Set(sponsors));
+  }, [contracts]);
+
+  const filteredSponsorOptions = useMemo(() => {
+    return availableSponsors.filter(gym =>
+      gym.toLowerCase().includes(searchTermSponsor.toLowerCase())
+    );
+  }, [availableSponsors, searchTermSponsor]);
+
+  const filters = ["all", "active", "expired"];
+
+  const filteredContracts = useMemo(() => {
+    let result = contracts;
+    if (selectedGyms.length != 0) {
+      result = result.filter(contr => selectedGyms.includes(contr.gym.name));
+    }
+    if (selectedSponsors.length != 0) {
+      result = result.filter(contr => selectedSponsors.includes(contr.sponsor.name));
+    }
+    if (expFilter === "active") {
+      result = result.filter(contr => new Date() <= new Date(contr.expiration_date));
+    } else if (expFilter === "expired") {
+      result = result.filter(contr => new Date() > new Date(contr.expiration_date));
+    }
+    return result;
+  }, [contracts, selectedGyms, selectedSponsors, expFilter]);
+
+  const toggleGym = (gym: string) => {
+    if (selectedGyms.includes(gym)) {
+      setSelectedGyms(selectedGyms.filter(g => g !== gym));
+    } else {
+      setSelectedGyms([...selectedGyms, gym]);
+    }
+  };
+
+  const toggleSponsor = (sponsor: string) => {
+    if (selectedSponsors.includes(sponsor)) {
+      setSelectedSponsors(selectedSponsors.filter(s => s !== sponsor));
+    } else {
+      setSelectedSponsors([...selectedSponsors, sponsor]);
+    }
+  };
+
+  const removeGym = (gym: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedGyms(selectedGyms.filter(g => g !== gym));
+  };
+
+  const removeSponsor = (sponsor: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedSponsors(selectedSponsors.filter(s => s !== sponsor));
+  };
+
   const isEditing = editingContractId !== null;
   const contractToDelete = deletingContractId
     ? contracts.find(c => c.contract_id === deletingContractId)
@@ -119,7 +205,7 @@ export default function ContractView() {
     );
   }
 
-  const groupedByGym = contracts.reduce((groups, contract) => {
+  const groupedByGym = filteredContracts.reduce((groups, contract) => {
     const gymName = contract.gym?.name || `Gym #${contract.gym_id}`;
     if (!groups[gymName]) {
       groups[gymName] = [];
@@ -161,7 +247,138 @@ export default function ContractView() {
         </Button>
       </div>
 
-      {contracts.length === 0 ? (
+      <div className="flex gap-2">
+        {filters.map((f) => (
+          <Badge
+            key={f}
+            variant={expFilter === f ? "default" : "outline"}
+            className="cursor-pointer capitalize px-3 py-1 text-sm"
+            onClick={() => setExpFilter(f)}
+          >
+            {f}
+          </Badge>
+        ))}
+      </div>
+      
+      <div className="flex w-full gap-4" ref={containerRef}>
+        <div className="relative w-1/2">
+          <div
+            className="min-h-[42px] p-1.5 flex flex-wrap gap-1.5 border border-gray-300 rounded-lg bg-white cursor-pointer focus-within:ring-2 focus-within:ring-primary focus-within:border-primary"
+            onClick={() => setIsSearchGymOpen(true)}
+          >
+            {selectedGyms.map(gym => (
+              <span 
+                key={gym} 
+                className="flex items-center gap-1 bg-blue-100 text-blue-800 text-sm pl-2 pr-1 py-0.5 rounded-md font-medium"
+              >
+                {gym}
+                <button
+                  type="button"
+                  onClick={(e) => removeGym(gym, e)}
+                  className="hover:bg-blue-200 rounded p-0.5 inline-flex items-center justify-center text-blue-600"
+                >
+                  x
+                </button>
+              </span>
+            ))}
+
+            <input
+              type="text"
+              className="flex-1 bg-transparent outline-none min-w-[60px] text-sm text-gray-700 px-1"
+              placeholder={selectedGyms.length === 0 ? "Filter by gyms" : ""}
+              value={searchTermGym}
+              onChange={(e) => {
+                setSearchTermGym(e.target.value);
+                setIsSearchGymOpen(true);
+              }}
+            />
+          </div>
+
+          {isSearchGymOpen && (
+            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+              {filteredGymOptions.length === 0 ? (
+                <div className="p-3 text-sm text-gray-500 text-center">No contracts found</div>
+              ) : (
+                filteredGymOptions.map(gym => {
+                  const isSelected = selectedGyms.includes(gym);
+                  return (
+                    <div
+                      key={gym}
+                      onClick={() => toggleGym(gym)}
+                      className={`flex items-center justify-between px-4 py-2 text-sm cursor-pointer select-none transition-colors ${
+                        isSelected ? 'bg-blue-50 text-blue-900 font-medium' : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <span>{gym}</span>
+                      {isSelected && <span className="text-blue-600 font-bold">✓</span>}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="relative w-1/2">
+          <div
+            className="min-h-[42px] p-1.5 flex flex-wrap gap-1.5 border border-gray-300 rounded-lg bg-white cursor-pointer focus-within:ring-2 focus-within:ring-primary focus-within:border-primary"
+            onClick={() => setIsSearchSponsorOpen(true)}
+          >
+            {selectedSponsors.map(sponsor => (
+              <span 
+                key={sponsor} 
+                className="flex items-center gap-1 bg-blue-100 text-blue-800 text-sm pl-2 pr-1 py-0.5 rounded-md font-medium"
+              >
+                {sponsor}
+                <button
+                  type="button"
+                  onClick={(e) => removeSponsor(sponsor, e)}
+                  className="hover:bg-blue-200 rounded p-0.5 inline-flex items-center justify-center text-blue-600"
+                >
+                  x
+                </button>
+              </span>
+            ))}
+
+            <input
+              type="text"
+              className="flex-1 bg-transparent outline-none min-w-[60px] text-sm text-gray-700 px-1"
+              placeholder={selectedSponsors.length === 0 ? "Filter by sponsors" : ""}
+              value={searchTermSponsor}
+              onChange={(e) => {
+                setSearchTermSponsor(e.target.value);
+                setIsSearchSponsorOpen(true);
+              }}
+            />
+          </div>
+
+          {isSearchSponsorOpen && (
+            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+              {filteredSponsorOptions.length === 0 ? (
+                <div className="p-3 text-sm text-gray-500 text-center">No contracts found</div>
+              ) : (
+                filteredSponsorOptions.map(sponsor => {
+                  const isSelected = selectedSponsors.includes(sponsor);
+                  return (
+                    <div
+                      key={sponsor}
+                      onClick={() => toggleSponsor(sponsor)}
+                      className={`flex items-center justify-between px-4 py-2 text-sm cursor-pointer select-none transition-colors ${
+                        isSelected ? 'bg-blue-50 text-blue-900 font-medium' : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <span>{sponsor}</span>
+                      {isSelected && <span className="text-blue-600 font-bold">✓</span>}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {filteredContracts.length === 0 ? (
         <p className="text-muted-foreground text-center py-16">No active contracts found.</p>
       ) : (
         <div className="space-y-8">
@@ -266,7 +483,7 @@ export default function ContractView() {
             </SheetTitle>
             <SheetDescription>
               {isEditing
-                ? "Update the contract details. Modify date, type, duration, capacity, or room."
+                ? "Update the contract details. Modify date, type, duration, capagym, or room."
                 : "Add a new contract. Fill in all the details below."}
             </SheetDescription>
           </SheetHeader>

@@ -177,6 +177,31 @@ export interface Trainer extends Employee {
   hourly_wage: number;
 }
 
+export interface PersonalTraining {
+  personal_training_id: number;
+  client_id: number;
+  trainer_id: number;
+  duration: number;
+  start_time: string;
+
+  client?: {
+    name: string;
+  };
+  trainer?: {
+    name: string;
+    surname: string
+    specialization?: string;
+  };
+}
+
+export interface GymEmployee {
+  gym_id: number;
+  employee_id: number;
+
+  gym?: Gym;
+  employee?: Employee;
+}
+
 export interface Address {
   address_id: number;
   city: string;

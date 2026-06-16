@@ -4,9 +4,11 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { TablePagination } from "./table-pagination"
 import { TableActions } from "./table-actions"
+import { ArrowUpDown, ArrowDown, ArrowUp } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 interface EquipmentListViewProps {
   data: Equipment[];
@@ -27,12 +29,36 @@ const TYPE_LABELS: Record<string, string> = {
   accessory: "Accessory",
 }
 
+type SortOrder = "asc" | "desc" | null;
+
 export function EquipmentListView({ data, onEdit, onDelete }: EquipmentListViewProps) {
   const [currentPage, setCurrentPage] = useState(1)
+  const [sortOrder, setSortOrder] = useState<SortOrder>(null)
   const itemsPerPage = 10
 
-  const totalPages = Math.ceil(data.length / itemsPerPage)
-  const paginatedData = data.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  const handleSort = () => {
+    setSortOrder((prev) => {
+      if (prev === null) return "asc";
+      if (prev === "asc") return "desc";
+      return null;
+    });
+  };
+
+  const sortedData = useMemo(() => {
+    if (!sortOrder) return data;
+    return [...data].sort((a, b) => {
+      const priceA = Number(a.price || 0);
+      const priceB = Number(b.price || 0);
+      if (sortOrder === "asc") {
+        return priceA - priceB;
+      } else {
+        return priceB - priceA;
+      }
+    });
+  }, [data, sortOrder]);
+
+  const totalPages = Math.ceil(sortedData.length / itemsPerPage)
+  const paginatedData = sortedData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   const getDetail = (eq: Equipment) => {
     if (eq.equipment_type === "weight" && eq.weight)
@@ -53,7 +79,22 @@ export function EquipmentListView({ data, onEdit, onDelete }: EquipmentListViewP
             <TableHead>Producer</TableHead>
             <TableHead>Type</TableHead>
             <TableHead>Detail</TableHead>
-            <TableHead>Price</TableHead>
+            <TableHead>
+              <Button 
+                variant="ghost" 
+                onClick={handleSort} 
+                className="-ml-4 h-8 data-[state=open]:bg-accent font-semibold hover:bg-transparent"
+              >
+                Price
+                {sortOrder === "asc" ? (
+                  <ArrowUp className="ml-2 h-4 w-4" />
+                ) : sortOrder === "desc" ? (
+                  <ArrowDown className="ml-2 h-4 w-4" />
+                ) : (
+                  <ArrowUpDown className="ml-2 h-4 w-4" />
+                )}
+              </Button>
+            </TableHead>
             <TableHead>State</TableHead>
             <TableHead className="text-right w-[100px]">Actions</TableHead>
           </TableRow>
