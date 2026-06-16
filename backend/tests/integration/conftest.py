@@ -26,18 +26,20 @@ TestingSessionLocal = sessionmaker(test_engine, class_=AsyncSession, expire_on_c
 @pytest.fixture(scope="session")
 async def setup_test_db():
 
-    init_sql_path = os.path.join(os.path.dirname(__file__), "../../../backend/init.sql")
+    init_sql_path = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../init.sql"))
 
-    if os.path.exists(init_sql_path):
-        with open(init_sql_path, "r", encoding="utf-8") as f:
-            sql_script = f.read()
+    if not os.path.exists(init_sql_path):
+        raise FileNotFoundError(f"Database initialization script not found at {init_sql_path}")
 
-        async with test_engine.begin() as conn:
-            await conn.execute(text("DROP SCHEMA public CASCADE"))
-            await conn.execute(text("CREATE SCHEMA public"))
+    with open(init_sql_path, "r", encoding="utf-8") as f:
+        sql_script = f.read()
 
-            raw_conn = await conn.get_raw_connection()
-            await raw_conn.driver_connection.execute(sql_script)
+    async with test_engine.begin() as conn:
+        await conn.execute(text("DROP SCHEMA public CASCADE"))
+        await conn.execute(text("CREATE SCHEMA public"))
+
+        raw_conn = await conn.get_raw_connection()
+        await raw_conn.driver_connection.execute(sql_script)
 
     yield
 
