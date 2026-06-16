@@ -467,6 +467,19 @@ CREATE INDEX IF NOT EXISTS idx_class_registration_class_id ON class_registration
 CREATE INDEX IF NOT EXISTS idx_class_registration_client_id ON class_registration(client_id);
 CREATE INDEX IF NOT EXISTS idx_class_registration_client_class ON class_registration(client_id, class_id);
 
+CREATE INDEX IF NOT EXISTS idx_subscription_name ON subscription(name);
+
+CREATE INDEX IF NOT EXISTS idx_equipment_gym_id ON equipment(gym_id);
+CREATE INDEX IF NOT EXISTS idx_equipment_type ON equipment(equipment_type);
+
+CREATE INDEX IF NOT EXISTS idx_client_subscription_client_id ON client_subscription(client_id);
+CREATE INDEX IF NOT EXISTS idx_client_subscription_subscription_id ON client_subscription(subscription_id);
+CREATE INDEX IF NOT EXISTS idx_client_subscription_expiration_date ON client_subscription(expiration_date);
+
+CREATE INDEX IF NOT EXISTS idx_entry_client_id ON entry(client_id);
+CREATE INDEX IF NOT EXISTS idx_entry_gym_id ON entry(gym_id);
+CREATE INDEX IF NOT EXISTS idx_entry_time ON entry(entry_time);
+
 -- INSERTING DATA PROCEDURES
 INSERT INTO client (client_id, name, surname, email, phone, birth_date) VALUES
     (201, 'Michał', 'Kras', 'm.kras@studia.pl', '555111222', '2004-05-10'),
