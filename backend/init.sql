@@ -500,18 +500,88 @@ BEGIN
     ON CONFLICT DO NOTHING;
 END;
 $$;
-
-CREATE OR REPLACE PROCEDURE generate_classes(num_classes INT)
+CREATE OR REPLACE PROCEDURE generate_classes(
+    num_classes_per_year INT DEFAULT 200,
+    start_year INT DEFAULT 2024,
+    end_year INT DEFAULT 2026
+)
 LANGUAGE plpgsql AS $$
-DECLARE i INT;
+DECLARE
+    i INT;
+    v_year INT;
+    v_month INT;
+    v_day INT;
+    v_class_date DATE;
+    v_class_type_id INT;
+    v_room_id INT;
+    v_duration INT;
+    v_capacity INT;
+    v_class_type_count INT;
+    v_room_count INT;
+    v_max_days_offset INT;
 BEGIN
-    INSERT INTO class_type (name, difficulty) VALUES ('Yoga', 2), ('Crossfit', 5), ('Pilates', 3) ON CONFLICT DO NOTHING;
+    INSERT INTO class_type (name, difficulty) VALUES
+        ('Yoga', 2),
+        ('Crossfit', 5),
+        ('Pilates', 3),
+        ('HIIT', 4),
+        ('Zumba', 2),
+        ('Body Pump', 3),
+        ('Spinning', 4),
+        ('Yoga Flow', 2),
+        ('Strength Training', 3),
+        ('Cardio Kickboxing', 4);
 
-    FOR i IN 1..num_classes LOOP
-        INSERT INTO class (class_date, class_type_id, duration, capacity, room_id)
-        VALUES (CURRENT_DATE + (i % 14), (i % 3) + 1, 60, 20, (i % 3) + 1)
-        ON CONFLICT DO NOTHING;
+    SELECT COUNT(*) INTO v_class_type_count FROM class_type;
+    SELECT COUNT(*) INTO v_room_count FROM room;
+
+    IF v_room_count = 0 THEN
+        RAISE NOTICE 'No rooms found. Please create rooms first.';
+        RETURN;
+    END IF;
+
+    RAISE NOTICE 'Generating classes from % to % (% classes per year)',
+        start_year, end_year, num_classes_per_year;
+
+    FOR v_year IN start_year..end_year LOOP
+        FOR i IN 1..num_classes_per_year LOOP
+            v_month := floor(random() * 12) + 1;
+            v_max_days_offset := CASE
+                WHEN v_month IN (1, 3, 5, 7, 8, 10, 12) THEN 30
+                WHEN v_month IN (4, 6, 9, 11) THEN 29
+                ELSE 27
+            END;
+            v_day := floor(random() * v_max_days_offset) + 1;
+
+            v_class_date := make_date(v_year, v_month, v_day);
+            v_class_type_id := floor(random() * v_class_type_count) + 1;
+            v_room_id := floor(random() * v_room_count) + 1;
+            v_duration := (floor(random() * 4) + 1) * 15 + 15; -- 30, 45, 60, 75, or 90
+            v_capacity := floor(random() * 20) + 10; -- 10 to 30
+
+            BEGIN
+                INSERT INTO class (
+                    class_date,
+                    class_type_id,
+                    duration,
+                    capacity,
+                    room_id
+                ) VALUES (
+                    v_class_date,
+                    v_class_type_id,
+                    v_duration,
+                    v_capacity,
+                    v_room_id
+                );
+            EXCEPTION
+                WHEN unique_violation THEN
+                    CONTINUE;
+                WHEN foreign_key_violation THEN
+                    CONTINUE;
+            END;
+        END LOOP;
     END LOOP;
+
 END;
 $$;
 
@@ -519,45 +589,100 @@ CREATE OR REPLACE PROCEDURE generate_registrations()
 LANGUAGE plpgsql AS $$
 DECLARE
     r_client RECORD;
-    v_class_id INT;
+    r_class RECORD;
+    v_class_date DATE;
     v_random_date DATE;
-    v_reg_id INT;
+    v_registrations_created INT := 0;
+    v_client_count INT;
+    v_class_count INT;
+    v_registrations_for_class INT;
+    v_attempts INT;
+    v_max_attempts INT := 100;
+    v_target_registrations INT;
+    v_client_id INT;
 BEGIN
-    SELECT COALESCE(MAX(class_registration_id), 0) INTO v_reg_id FROM class_registration;
+    SELECT COUNT(*) INTO v_client_count FROM client;
+    SELECT COUNT(*) INTO v_class_count FROM class;
 
-    FOR r_client IN SELECT client_id FROM client LOOP
+    IF v_client_count = 0 OR v_class_count = 0 THEN
+        RAISE NOTICE 'No clients or classes found. Please generate data first.';
+        RETURN;
+    END IF;
 
-        SELECT class_id INTO v_class_id FROM class ORDER BY RANDOM() LIMIT 1;
+    RAISE NOTICE 'Generating random registrations for % clients and % classes', v_client_count, v_class_count;
+    RAISE NOTICE 'Each class will get a random number of registrations (0 to capacity)';
 
-        IF v_class_id IS NULL THEN
-            CONTINUE;
-        END IF;
+    FOR r_class IN
+        SELECT
+            c.class_id,
+            c.class_date,
+            c.capacity
+        FROM class c
+        WHERE c.class_date >= '2024-01-01'
+        ORDER BY c.class_date
+    LOOP
+        v_target_registrations := floor(random() * (LEAST(r_class.capacity, v_client_count) + 1))::INT;
+        v_registrations_for_class := 0;
+        v_attempts := 0;
 
-        v_random_date := DATE '2020-01-01' + (random() * (CURRENT_DATE - DATE '2020-01-01'))::INT;
+        WHILE v_registrations_for_class < v_target_registrations AND v_attempts < v_max_attempts LOOP
+            v_attempts := v_attempts + 1;
 
-        BEGIN
-            INSERT INTO class_registration (
-                client_id,
-                class_id,
-                registration_date
-            ) VALUES (
-                r_client.client_id,
-                v_class_id,
-                v_random_date
-            ) ON CONFLICT DO NOTHING;
+            SELECT client_id INTO v_client_id
+            FROM client
+            ORDER BY RANDOM()
+            LIMIT 1;
 
-            v_reg_id := v_reg_id + 1;
+            IF v_client_id IS NULL THEN
+                EXIT;
+            END IF;
 
-        EXCEPTION
-            WHEN raise_exception THEN
+            IF EXISTS (
+                SELECT 1 FROM class_registration
+                WHERE class_id = r_class.class_id
+                AND client_id = v_client_id
+            ) THEN
                 CONTINUE;
-            WHEN unique_violation THEN
-                CONTINUE;
-        END;
+            END IF;
 
+            v_random_date := r_class.class_date - (random() * 90)::INT;
+
+            IF v_random_date > r_class.class_date THEN
+                v_random_date := r_class.class_date - 1;
+            END IF;
+
+            IF v_random_date < '2024-01-01' THEN
+                v_random_date := GREATEST('2024-01-01', r_class.class_date - 30);
+            END IF;
+
+            IF v_random_date > CURRENT_DATE THEN
+                v_random_date := CURRENT_DATE - (random() * 10)::INT;
+            END IF;
+
+            BEGIN
+                INSERT INTO class_registration (
+                    client_id,
+                    class_id,
+                    registration_date
+                ) VALUES (
+                    v_client_id,
+                    r_class.class_id,
+                    v_random_date
+                );
+
+                v_registrations_for_class := v_registrations_for_class + 1;
+                v_registrations_created := v_registrations_created + 1;
+
+            EXCEPTION
+                WHEN unique_violation THEN
+                    CONTINUE;
+                WHEN foreign_key_violation THEN
+                    CONTINUE;
+                WHEN OTHERS THEN
+                    CONTINUE;
+            END;
+        END LOOP;
     END LOOP;
-
-    RAISE NOTICE 'Class registrations generation completed.';
 END;
 $$;
 
@@ -846,11 +971,11 @@ BEGIN
         random_building := floor(random() * 250) + 1;
         random_postal := lpad(floor(random() * 99)::text, 2, '0') || '-' || lpad(floor(random() * 999)::text, 3, '0');
 
-        INSERT INTO address (city, street, building_number, postal_code) 
+        INSERT INTO address (city, street, building_number, postal_code)
         VALUES (random_city,
             (SELECT string_agg(substring('abcdefghijklmnopqrstuvwxyz', (random() * 25 + 1)::int, 1), '')
             FROM generate_series(1, 16)),
-            random_building, 
+            random_building,
             random_postal)
         ON CONFLICT DO NOTHING;
     END LOOP;
@@ -925,15 +1050,15 @@ BEGIN
             INSERT INTO contract(gym_id, sponsor_id, payment, contract_date, expiration_date)
             VALUES (v_gym_id, v_sponsor_id, v_payment, v_start_date, v_end_date)
             ON CONFLICT DO NOTHING;
-            
+
             inserted_count := inserted_count + 1;
-        EXCEPTION 
+        EXCEPTION
             WHEN OTHERS THEN
-                CONTINUE; 
+                CONTINUE;
         END;
 
     END LOOP;
-    
+
     RAISE NOTICE 'Successfully generated % random contracts.', inserted_count;
 END;
 $$;
@@ -963,7 +1088,7 @@ BEGIN
             birth_date,
             gender,
             salary,
-            employee_type 
+            employee_type
         )
         VALUES (
             v_start_id + i,
@@ -1014,7 +1139,7 @@ DECLARE
     v_specs TEXT[] := ARRAY['Crossfit', 'Yoga', 'Pilates', 'Bodybuilding', 'Powerlifting', 'Zumba', 'Swimming'];
 BEGIN
     SELECT COALESCE(MAX(employee_id), 0) INTO v_last_id_before FROM employee;
-    
+
     CALL generate_employees(num_trainers, 'trainer');
 
     INSERT INTO trainer (employee_id, specialization, hourly_wage)
@@ -1943,7 +2068,7 @@ CREATE OR REPLACE FUNCTION validate_employee_dates()
 RETURNS TRIGGER AS $$
 BEGIN
     IF NEW.birth_date IS NOT NULL AND AGE(NEW.date_employed, NEW.birth_date) < INTERVAL '16 years' THEN
-        RAISE EXCEPTION 'Error: We dont hire people under 16! Birth date: %, Employed date: %', 
+        RAISE EXCEPTION 'Error: We dont hire people under 16! Birth date: %, Employed date: %',
             NEW.birth_date, NEW.date_employed;
     END IF;
 
@@ -1994,3 +2119,59 @@ BEGIN
         );
     END LOOP;
 END $$;
+
+
+-- ANALYTICS FUNCTIONS
+CREATE OR REPLACE FUNCTION get_popular_class_types(
+    p_year INT,
+    p_month INT,
+    p_limit INT DEFAULT 5
+)
+RETURNS TABLE(
+    class_type_name VARCHAR,
+    total_classes INT,
+    total_registrations BIGINT,
+    total_capacity INT,
+    avg_occupancy_rate NUMERIC,
+    total_available_spots INT
+) AS $$
+BEGIN
+    RETURN QUERY
+    WITH monthly_classes AS (
+        SELECT
+            c.class_id,
+            c.class_type_id,
+            c.capacity,
+            COUNT(cr.class_registration_id) as class_reg_count
+        FROM class c
+        LEFT JOIN class_registration cr ON c.class_id = cr.class_id
+        WHERE EXTRACT(YEAR FROM c.class_date) = p_year
+          AND EXTRACT(MONTH FROM c.class_date) = p_month
+        GROUP BY c.class_id, c.class_type_id, c.capacity
+    ),
+    class_stats AS (
+        SELECT
+            ct.name as class_type_name,
+            COUNT(mc.class_id)::INT as total_classes,
+            SUM(mc.class_reg_count)::BIGINT as total_registrations,
+            SUM(mc.capacity)::INT as total_capacity,
+            SUM(mc.capacity - mc.class_reg_count)::INT as total_available_spots
+        FROM class_type ct
+        INNER JOIN monthly_classes mc ON ct.class_type_id = mc.class_type_id
+        GROUP BY ct.class_type_id, ct.name
+    )
+    SELECT
+        cs.class_type_name,
+        cs.total_classes,
+        cs.total_registrations,
+        cs.total_capacity,
+        ROUND(CASE
+            WHEN cs.total_capacity > 0 THEN (cs.total_registrations::NUMERIC / cs.total_capacity::NUMERIC) * 100
+            ELSE 0
+        END, 2) as avg_occupancy_rate,
+        cs.total_available_spots
+    FROM class_stats cs
+    ORDER BY cs.total_registrations DESC
+    LIMIT p_limit;
+END;
+$$ LANGUAGE plpgsql;

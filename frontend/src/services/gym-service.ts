@@ -84,3 +84,5 @@ export const ClientService = new ApiClient<Client>("/clients/");
 export const ArticleService = new ApiClient<Article>("/articles/");
 export const StocktakingService = new ApiClient<Stocktaking>("/stocktakings/");
 export const TransactionService = new ApiClient<TransactionClient>("/transactions/");
+
+export const AnalyticsClassTypeService = new ApiClient<any>("/analytics/popular-class-types");
