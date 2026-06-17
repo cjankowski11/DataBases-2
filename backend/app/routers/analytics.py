@@ -47,3 +47,54 @@ async def get_popular_class_types(
         }
     except Exception as e:
         return handle_error(e, context="get_popular_class_types")
+    
+
+class FinancialReportResponse(BaseModel):
+    year_month: str
+    subscription_income: float
+    sponsor_income: float
+    total_income: float
+    salary_costs: float
+    net_profit: float
+
+
+@router.get("/profit", response_model=ApiResponse)
+async def get_financial_report(
+    start_date: str = Query(..., description="Data początkowa w formacie YYYY-MM-DD", regex=r"^\d{4}-\d{2}-\d{2}$"),
+    end_date: str = Query(..., description="Data końcowa w formacie YYYY-MM-DD", regex=r"^\d{4}-\d{2}-\d{2}$"),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        # Walidacja kolejności dat
+        if datetime.strptime(start_date, "%Y-%m-%d") > datetime.strptime(end_date, "%Y-%m-%d"):
+            raise BadRequestError("Data początkowa (start_date) nie może być późniejsza niż data końcowa (end_date)")
+
+        start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
+        end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
+
+        # Wywołanie funkcji PostgreSQL z przekazaniem obiektów typu date
+        result = await db.execute(
+            text("SELECT * FROM public.get_financial_report(:start_date, :end_date)"),
+            {"start_date": start_date_obj, "end_date": end_date_obj}
+        )
+
+        data = []
+        for row in result:
+            data.append({
+                "year_month": row[0],
+                "subscription_income": float(row[1]),
+                "sponsor_income": float(row[2]),
+                "total_income": float(row[3]),
+                "salary_costs": float(row[4]),
+                "net_profit": float(row[5])
+            })
+
+        return {
+            "status": "SUCCEEDED",
+            "data": data,
+            "message": "Financial report generated successfully"
+        }
+    except BadRequestError as e:
+        return handle_error(e, context="get_financial_report")
+    except Exception as e:
+        return handle_error(e, context="get_financial_report")

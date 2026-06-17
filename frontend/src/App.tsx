@@ -26,6 +26,7 @@ import TrainerCreateView from "@/views/trainer-create-view";
 import PersonalTrainingsView from "./views/personal-training-view";
 import GymEmployeesDetailView from "./views/gym-employees-view";
 import ClientAnalyticsDashboard from "./views/analytics/client-analytics-view";
+import FinancialAnalyticsDashboard from "./views/analytics/profit-analytics-view";
 
 export default function App() {
   return (
@@ -65,6 +66,7 @@ export default function App() {
                 <Route path="/trainers/new" component={TrainerCreateView}/>
                 <Route path="/gyms/:gym_id/employees" component={GymEmployeesDetailView} />
                 <Route path="/analytics/clients" component={ClientAnalyticsDashboard} />
+                <Route path="/analytics/profit" component={FinancialAnalyticsDashboard} />
                 <Route>
                   <Redirect to="/gyms" />
                 </Route>

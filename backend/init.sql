@@ -1581,7 +1581,7 @@ BEGIN
         SELECT subscription_id, duration INTO v_subscription_id, v_duration
             FROM subscription ORDER BY RANDOM() LIMIT 1;
 
-        v_transaction_date := CURRENT_DATE - (RANDOM() * 30)::INT;
+        v_transaction_date := CURRENT_DATE - (RANDOM() * 180)::INT;
         v_expiration_date  := v_transaction_date + v_duration;
 
         v_paid_now := 'Y';
@@ -2088,10 +2088,10 @@ CALL generate_subscriptions();
 CALL generate_articles();
 CALL generate_gyms();
 CALL generate_rooms();
-CALL generate_employees(100, 'employee');
-CALL generate_receptionists(100);
-CALL generate_trainers(100);
-CALL generate_employees_gyms(100);
+CALL generate_employees(30, 'employee');
+CALL generate_receptionists(30);
+CALL generate_trainers(30);
+CALL generate_employees_gyms(80);
 CALL generate_equipment(50);
 CALL generate_stocktaking();
 CALL generate_transactions(1000);
@@ -2173,5 +2173,83 @@ BEGIN
     FROM class_stats cs
     ORDER BY cs.total_registrations DESC
     LIMIT p_limit;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+CREATE OR REPLACE FUNCTION public.get_financial_report(
+    p_start_date DATE,
+    p_end_date DATE
+)
+RETURNS TABLE(
+    year_month TEXT,
+    subscription_income NUMERIC(10,2),
+    sponsor_income NUMERIC(10,2),
+    total_income NUMERIC(10,2),
+    salary_costs NUMERIC(10,2),
+    net_profit NUMERIC(10,2)
+) AS $$
+BEGIN
+    RETURN QUERY
+    WITH RECURSIVE month_range AS (
+        -- Generujemy listę miesięcy w wybranym zakresie czasu
+        SELECT DATE_TRUNC('month', p_start_date)::DATE AS m_date
+        UNION ALL
+        SELECT (m_date + INTERVAL '1 month')::DATE
+        FROM month_range
+        WHERE m_date < DATE_TRUNC('month', p_end_date)::DATE
+    ),
+    income_subscriptions AS (
+        -- Subskrypcje naliczane co miesiąc, dopóki są aktywne
+        SELECT 
+            TO_CHAR(mr.m_date, 'YYYY-MM') AS finance_month,
+            SUM(s.price)::NUMERIC(10,2) AS total_subscription_income
+        FROM month_range mr
+        CROSS JOIN client_subscription cs
+        JOIN subscription s ON cs.subscription_id = s.subscription_id
+        WHERE DATE_TRUNC('month', cs.transaction_date)::DATE <= mr.m_date
+          -- Jeśli Twoja tabela client_subscription ma datę ważności, możesz odkomentować poniższe:
+          -- AND (cs.valid_until IS NULL OR DATE_TRUNC('month', cs.valid_until)::DATE >= mr.m_date)
+        GROUP BY mr.m_date
+    ),
+    income_sponsors AS (
+        -- Kontrakty sponsorskie naliczane co miesiąc na podstawie Twojej tabeli contract
+        SELECT 
+            TO_CHAR(mr.m_date, 'YYYY-MM') AS finance_month,
+            SUM(c.payment)::NUMERIC(10,2) AS total_sponsor_income
+        FROM month_range mr
+        CROSS JOIN contract c
+        WHERE DATE_TRUNC('month', c.contract_date)::DATE <= mr.m_date
+          -- Kontrakt wpada do zestawienia tylko wtedy, gdy badany miesiąc nie wykroczył poza expiration_date
+          AND DATE_TRUNC('month', c.expiration_date)::DATE >= mr.m_date
+        GROUP BY mr.m_date
+    ),
+    costs_salaries AS (
+        -- Pracownicy opłacani co miesiąc
+        SELECT 
+            TO_CHAR(mr.m_date, 'YYYY-MM') AS finance_month,
+            SUM(e.salary)::NUMERIC(10,2) AS total_salary_cost
+        FROM month_range mr
+        CROSS JOIN employee e
+        WHERE e.is_employed = TRUE 
+          AND DATE_TRUNC('month', e.date_employed)::DATE <= mr.m_date
+        GROUP BY mr.m_date
+    ),
+    all_months AS (
+        SELECT TO_CHAR(m_date, 'YYYY-MM') AS finance_month FROM month_range
+    )
+    SELECT 
+        m.finance_month,
+        COALESCE(sub.total_subscription_income, 0.00),
+        COALESCE(spon.total_sponsor_income, 0.00),
+        (COALESCE(sub.total_subscription_income, 0.00) + COALESCE(spon.total_sponsor_income, 0.00)) AS total_income,
+        COALESCE(sal.total_salary_cost, 0.00),
+        ((COALESCE(sub.total_subscription_income, 0.00) + COALESCE(spon.total_sponsor_income, 0.00)) - COALESCE(sal.total_salary_cost, 0.00)) AS net_profit
+    FROM all_months m
+    LEFT JOIN income_subscriptions sub ON m.finance_month = sub.finance_month
+    LEFT JOIN income_sponsors spon ON m.finance_month = spon.finance_month
+    LEFT JOIN costs_salaries sal ON m.finance_month = sal.finance_month
+    ORDER BY m.finance_month DESC;
 END;
 $$ LANGUAGE plpgsql;

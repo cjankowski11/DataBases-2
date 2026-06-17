@@ -37,6 +37,7 @@ const navItems = [
 
 const navAnalyticsItems = [
   { title: "Client Analytics", url: "/analytics/clients", icon: ChartColumn },
+  { title: "Profit", url: "/analytics/profit", icon: ChartColumn },
 
 ];
 
