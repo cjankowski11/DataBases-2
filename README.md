@@ -168,7 +168,7 @@ Projekt pomyślnie implementuje działający system z kompleksową warstwą bazo
 ![BD2 Model relacyjny](docs/etap1_model.png)
 ## BD2 Admin Gyms
 ![BD2 Admin Gyms](docs/bd2_gyms.png)
-## BD2 Admin Update
+## BD2 Admin Create
 ![BD2 Admin Update](docs/bd2_gyms_post.png)
 ## BD2 Admin Delete
 ![BD2 Admin Delete](docs/bd2_gyms_delete.png)
