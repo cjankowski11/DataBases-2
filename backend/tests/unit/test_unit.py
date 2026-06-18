@@ -113,7 +113,7 @@ def test_handle_error_sqlalchemy_generic_fk():
 @pytest.mark.unit
 def test_handle_error_sqlalchemy_class_full():
     mock_orig = MagicMock()
-    mock_orig.__str__.return_value = "Trigger error: Class is full!"
+    mock_orig.__str__.return_value = "Trigger error: Class is full."
 
     exception = SQLAlchemyError(None, None, mock_orig)
     exception.orig = mock_orig
