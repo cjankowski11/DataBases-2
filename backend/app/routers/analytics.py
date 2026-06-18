@@ -47,7 +47,7 @@ async def get_popular_class_types(
         }
     except Exception as e:
         return handle_error(e, context="get_popular_class_types")
-    
+
 
 class FinancialReportResponse(BaseModel):
     year_month: str
@@ -98,3 +98,60 @@ async def get_financial_report(
         return handle_error(e, context="get_financial_report")
     except Exception as e:
         return handle_error(e, context="get_financial_report")
+
+
+@router.get("/gym-entries", response_model=ApiResponse)
+async def get_gym_entries(
+    year: int = Query(..., ge=2020, le=datetime.now().year),
+    month: int = Query(..., ge=1, le=12),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        result = await db.execute(
+            text("SELECT * FROM get_monthly_gym_entries(:year, :month)"),
+            {"year": year, "month": month}
+        )
+
+        data = []
+        for row in result:
+            data.append({
+                "gym_id": row[0],
+                "total_entries": row[1],
+                "avg_daily_entries": float(row[2])
+                })
+
+        return {
+            "status": "SUCCEEDED",
+            "data": data,
+                        "message": "Gym entries analytics retrieved successfully"
+        }
+    except Exception as e:
+        return handle_error(e, context="get_gym_entries_analytics")
+
+
+@router.get("/subscriptions", response_model=ApiResponse)
+async def get_subscription_analytics(
+    year: int = Query(..., ge=2020, le=datetime.now().year),
+    month: int = Query(..., ge=1, le=12),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        result = await db.execute(
+            text("SELECT * FROM get_subscription_counts(:year, :month)"),
+            {"year": year, "month": month}
+        )
+
+        data = []
+        for row in result:
+            data.append({
+                "subscription_name": row[0],
+                "total_purchased": row[1]
+            })
+
+        return {
+            "status": "SUCCEEDED",
+            "data": data,
+            "message": "Subscription metrics retrieved successfully"
+        }
+    except Exception as e:
+        return handle_error(e, context="get_subscription_analytics")

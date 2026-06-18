@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { RegistrationService } from "@/services/gym-service";
 import type { Registration } from "@/types/gym-types";
-import { Loader2, AlertCircle, ClipboardList, Plus, CheckCircle, XCircle, Calendar, Filter, X } from "lucide-react";
+import type { SortField, SortOrder } from "@/components/tables/registration-table";
+import { Loader2, ClipboardList, Plus, CheckCircle, XCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { RegistrationListView } from "@/components/tables/registration-table";
 import { Button } from "@/components/ui/button";
@@ -26,32 +27,60 @@ export default function RegistrationsView() {
   const [deletingRegistrationId, setDeletingRegistrationId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [sortField, setSortField] = useState<SortField>('date');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [appliedStartDate, setAppliedStartDate] = useState<string>("");
   const [appliedEndDate, setAppliedEndDate] = useState<string>("");
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const params: Record<string, string> = {};
+      setError(null);
+
+      const params: Record<string, any> = {
+        page: currentPage,
+        limit: 10,
+        sort_by: sortField,
+        sort_order: sortOrder
+      };
+
       if (appliedStartDate) params.start_date = appliedStartDate;
       if (appliedEndDate) params.end_date = appliedEndDate;
 
-      const registrations = await RegistrationService.getAll(
-        Object.keys(params).length > 0 ? params : undefined
-      );
-      setData(registrations);
+      const response = await RegistrationService.getAll(params) as any;
+
+      if (response && Array.isArray(response.items)) {
+        setData(response.items);
+        setTotalPages(response.total_pages || 1);
+      } else if (Array.isArray(response)) {
+        setData(response);
+        setTotalPages(1);
+      } else {
+        console.warn("Received unexpected payload layout:", response);
+        setData([]);
+        setTotalPages(1);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load registrations");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentPage, sortField, sortOrder, appliedStartDate, appliedEndDate]);
 
   useEffect(() => {
     fetchData();
-  }, [appliedStartDate, appliedEndDate]);
+  }, [fetchData]);
+
+  const handleSortChange = (field: SortField, order: SortOrder) => {
+    setSortField(field);
+    setSortOrder(order);
+    setCurrentPage(1);
+  };
 
   const handleEdit = (registrationId: number) => {
     setEditingRegistrationId(registrationId);
@@ -69,15 +98,14 @@ export default function RegistrationsView() {
     try {
       await RegistrationService.delete(deletingRegistrationId);
       setSuccessMessage("Registration deleted successfully!");
-      await fetchData();
       setDeletingRegistrationId(null);
+      await fetchData();
 
       setTimeout(() => {
         setSuccessMessage(null);
       }, 5000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete registration");
-
       setTimeout(() => {
         setError(null);
       }, 5000);
@@ -114,37 +142,19 @@ export default function RegistrationsView() {
     setEndDate("");
     setAppliedStartDate("");
     setAppliedEndDate("");
+    setCurrentPage(1);
   };
 
   const applyFilters = () => {
     setAppliedStartDate(startDate);
     setAppliedEndDate(endDate);
+    setCurrentPage(1);
   };
 
   const isEditing = editingRegistrationId !== null;
   const registrationToDelete = deletingRegistrationId
     ? data.find(r => r.class_registration_id === deletingRegistrationId)
     : null;
-
-  if (isLoading) {
-    return (
-      <div className="flex h-[400px] w-full items-center justify-center">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (error && !deletingRegistrationId) {
-    return (
-      <div className="p-6">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
 
   return (
     <div className="p-8 space-y-6">
@@ -181,7 +191,6 @@ export default function RegistrationsView() {
         </Button>
       </div>
 
-      {/* Date Filters */}
       <div className="flex gap-4 items-end bg-muted/50 p-4 rounded-lg">
         <div className="space-y-2">
           <p className="text-sm font-medium">From</p>
@@ -207,11 +216,25 @@ export default function RegistrationsView() {
         )}
       </div>
 
-      <RegistrationListView
-        data={data}
-        onEdit={handleEdit}
-        onDelete={handleDeleteClick}
-      />
+      <div className="rounded-md border p-1 min-h-[300px] relative flex flex-col justify-between">
+        {isLoading ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/50 backdrop-blur-[1px] z-10">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          </div>
+        ) : null}
+
+        <RegistrationListView
+          data={data}
+          totalPages={totalPages}
+          currentPage={currentPage}
+          sortField={sortField}
+          sortOrder={sortOrder}
+          onPageChange={setCurrentPage}
+          onSortChange={handleSortChange}
+          onEdit={handleEdit}
+          onDelete={handleDeleteClick}
+        />
+      </div>
 
       <Sheet open={isSheetOpen} onOpenChange={handleSheetClose}>
         <SheetContent side="right" className="sm:max-w-[425px] overflow-y-auto">

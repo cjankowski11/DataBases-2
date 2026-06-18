@@ -238,3 +238,24 @@ export interface Contract {
   gym?: Gym;
   sponsor?: Sponsor;
 }
+
+
+export interface ClassTypesAnalytics {
+  class_type_name: string;
+  total_classes: number;
+  total_registrations: number;
+  total_capacity: number;
+  avg_occupancy_rate: number;
+  total_available_spots: number;
+}
+
+export interface GymEntriesAnalytics {
+  gym_id: number;
+  total_entries: number;
+  avg_daily_entries: number;
+}
+
+export interface SubscriptionsAnalytics {
+  subscription_name: string;
+  total_purchased: number;
+}

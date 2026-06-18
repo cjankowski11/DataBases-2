@@ -2134,7 +2134,9 @@ RETURNS TABLE(
     total_capacity INT,
     avg_occupancy_rate NUMERIC,
     total_available_spots INT
-) AS $$
+)
+LANGUAGE plpgsql
+AS $$
 BEGIN
     RETURN QUERY
     WITH monthly_classes AS (
@@ -2174,9 +2176,6 @@ BEGIN
     ORDER BY cs.total_registrations DESC
     LIMIT p_limit;
 END;
-$$ LANGUAGE plpgsql;
-
-
 
 CREATE OR REPLACE FUNCTION public.get_financial_report(
     p_start_date DATE,
@@ -2202,7 +2201,7 @@ BEGIN
     ),
     income_subscriptions AS (
         -- Subskrypcje naliczane co miesiąc, dopóki są aktywne
-        SELECT 
+        SELECT
             TO_CHAR(mr.m_date, 'YYYY-MM') AS finance_month,
             SUM(s.price)::NUMERIC(10,2) AS total_subscription_income
         FROM month_range mr
@@ -2215,7 +2214,7 @@ BEGIN
     ),
     income_sponsors AS (
         -- Kontrakty sponsorskie naliczane co miesiąc na podstawie Twojej tabeli contract
-        SELECT 
+        SELECT
             TO_CHAR(mr.m_date, 'YYYY-MM') AS finance_month,
             SUM(c.payment)::NUMERIC(10,2) AS total_sponsor_income
         FROM month_range mr
@@ -2227,19 +2226,19 @@ BEGIN
     ),
     costs_salaries AS (
         -- Pracownicy opłacani co miesiąc
-        SELECT 
+        SELECT
             TO_CHAR(mr.m_date, 'YYYY-MM') AS finance_month,
             SUM(e.salary)::NUMERIC(10,2) AS total_salary_cost
         FROM month_range mr
         CROSS JOIN employee e
-        WHERE e.is_employed = TRUE 
+        WHERE e.is_employed = TRUE
           AND DATE_TRUNC('month', e.date_employed)::DATE <= mr.m_date
         GROUP BY mr.m_date
     ),
     all_months AS (
         SELECT TO_CHAR(m_date, 'YYYY-MM') AS finance_month FROM month_range
     )
-    SELECT 
+    SELECT
         m.finance_month,
         COALESCE(sub.total_subscription_income, 0.00),
         COALESCE(spon.total_sponsor_income, 0.00),
@@ -2253,3 +2252,64 @@ BEGIN
     ORDER BY m.finance_month DESC;
 END;
 $$ LANGUAGE plpgsql;
+$$;
+
+CREATE OR REPLACE FUNCTION get_monthly_gym_entries(
+    p_year INT,
+    p_month INT
+)
+RETURNS TABLE (
+    gym_id INT,
+    total_entries INT,
+    avg_daily_entries NUMERIC
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        e.gym_id,
+        COUNT(e.entry_id)::INT AS total_entries,
+        ROUND(
+            COUNT(e.entry_id)::NUMERIC /
+            EXTRACT(DAY FROM (make_date(p_year, p_month, 1) + INTERVAL '1 month' - INTERVAL '1 day'))::NUMERIC,
+            2
+        ) AS avg_daily_entries
+    FROM entry e
+    WHERE
+        EXTRACT(YEAR FROM e.entry_time) = p_year
+        AND EXTRACT(MONTH FROM e.entry_time) = p_month
+    GROUP BY e.gym_id
+    ORDER BY total_entries DESC;
+END;
+$$;
+
+
+CREATE OR REPLACE FUNCTION get_subscription_counts(
+    p_year INT,
+    p_month INT
+)
+RETURNS TABLE (
+    subscription_name VARCHAR(128),
+    total_purchased BIGINT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        s.name AS subscription_name,
+        COUNT(cs.client_subscription_id) AS total_purchased
+    FROM
+        client_subscription cs
+    JOIN
+        subscription s ON cs.subscription_id = s.subscription_id
+    WHERE
+        EXTRACT(YEAR FROM cs.transaction_date) = p_year
+        AND EXTRACT(MONTH FROM cs.transaction_date) = p_month
+    GROUP BY
+        s.name
+    ORDER BY
+        total_purchased DESC;
+END;
+$$;

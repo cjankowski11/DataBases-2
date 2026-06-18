@@ -106,8 +106,8 @@ class TrainerClass(Base):
     employee_id = Column(Integer, ForeignKey("employee.employee_id"), primary_key=True)
     class_id = Column(Integer, ForeignKey("class.class_id"), primary_key=True)
 
-    employee = relationship("Employee")
-    Class = relationship("Class")
+    employee = relationship("Employee", overlaps="classes,trainers")
+    Class = relationship("Class", overlaps="classes,trainers")
 
 class PersonalTraining(Base):
     __tablename__ = "personal_training"
