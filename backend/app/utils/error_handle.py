@@ -78,7 +78,7 @@ def handle_error(e: Exception, context: str = "") -> JSONResponse:
                     message="Cannot delete this record because it is referenced by other data."
                 ).model_dump()
             )
-        elif "Class is full!" in error_msg:
+        elif "Class is full." in error_msg:
             logger.warning("%sClass capacity exceeded: %s", prefix, error_msg)
             return JSONResponse(
                 status_code=409,

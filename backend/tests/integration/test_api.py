@@ -546,6 +546,465 @@ async def test_equipment_polymorphism_read(async_client: AsyncClient):
     del_m = await async_client.delete(f"/equipment/{machine_id}")
     assert del_m.status_code == 200
 
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_gym_opening_hours_enforcement(async_client: AsyncClient):
+    addr_payload = {
+        "city": "Warszawa",
+        "street": "Marszałkowska",
+        "building_number": 10,
+        "postal_code": "00-001"
+    }
+    addr_res = await async_client.post("/addresses/", json=addr_payload)
+    assert addr_res.status_code == 200
+    address_id = addr_res.json()["data"]["address_id"]
+
+    gym_payload = {
+        "name": "Trigger Test Gym",
+        "established": "2026-01-01",
+        "email": "gym@test.com",
+        "phone": "123456789",
+        "area": 500,
+        "open_hour": "06:00:00",
+        "close_hour": "22:00:00",
+        "address_id": address_id
+    }
+    gym_res = await async_client.post("/gyms/", json=gym_payload)
+    assert gym_res.status_code == 200
+    gym_id = gym_res.json()["data"]["gym_id"]
+
+    client_res = await async_client.post("/clients/", json={
+        "name": "Jan",
+        "surname": "Kowalski",
+        "email": "jan.hours@example.com",
+        "phone": "987654321",
+        "birth_date": "1990-01-01"
+    })
+    client_id = client_res.json()["data"]["client_id"]
+
+    sub_type_res = await async_client.post("/subscriptions/", json={
+        "name": "Standard Pass",
+        "price": 150.00,
+        "duration": 30
+    })
+    subscription_id = sub_type_res.json()["data"]["subscription_id"]
+
+    sub_payload = {
+        "client_id": client_id,
+        "subscription_id": subscription_id,
+        "transaction_date": "2026-06-18",
+        "paid_now": "Y",
+        "expiration_date": "2026-07-18"
+    }
+    await async_client.post("/client-subscriptions/", json=sub_payload)
+
+    entry_payload = {
+        "client_id": client_id,
+        "gym_id": gym_id,
+        "entry_time": "2026-06-18T03:00:00"
+    }
+    entry_res = await async_client.post("/entries/", json=entry_payload)
+
+    assert entry_res.status_code == 403
+    assert entry_res.json()["message"] == "Gym is closed during these hours."
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_class_capacity_overbooking(async_client: AsyncClient):
+    addr_payload = {
+        "city": "Warszawa",
+        "street": "Marszałkowska",
+        "building_number": 10,
+        "postal_code": "00-001"
+    }
+    addr_res = await async_client.post("/addresses/", json=addr_payload)
+    assert addr_res.status_code == 200
+    address_id = addr_res.json()["data"]["address_id"]
+
+    gym_payload = {
+        "name": "Trigger Test Gym",
+        "established": "2026-01-01",
+        "address_id": address_id
+    }
+    gym_res = await async_client.post("/gyms/", json=gym_payload)
+    assert gym_res.status_code == 200
+    gym_id = gym_res.json()["data"]["gym_id"]
+
+    room_payload = {"gym_id": gym_id, "name": "Room A"}
+    room_res = await async_client.post("/rooms/", json=room_payload)
+    assert room_res.status_code == 201
+    room_id = room_res.json()["data"]["room_id"]
+
+    type_payload = {"name": "Yoga", "difficulty": 2}
+    type_res = await async_client.post("/class_types/", json=type_payload)
+    assert type_res.status_code == 201
+    class_type_id = type_res.json()["data"]["class_type_id"]
+
+    class_payload = {
+        "class_date": "2026-06-20",
+        "class_type_id": class_type_id,
+        "duration": 60,
+        "capacity": 2,
+        "room_id": room_id
+    }
+    class_res = await async_client.post("/classes/", json=class_payload)
+    assert class_res.status_code == 201
+    class_id = class_res.json()["data"]["class_id"]
+
+    client_ids = []
+    for i in range(3):
+        res = await async_client.post("/clients/", json={
+            "name": f"User{i}",
+            "surname": "Test",
+            "email": f"capacity.{i}@test.com",
+            "phone": "000000000"
+        })
+        client_ids.append(res.json()["data"]["client_id"])
+
+    res1 = await async_client.post("/registrations/", json={
+        "client_id": client_ids[0], "class_id": class_id, "registration_date": "2026-06-18"
+    })
+    assert res1.status_code == 201
+
+    res2 = await async_client.post("/registrations/", json={
+        "client_id": client_ids[1], "class_id": class_id, "registration_date": "2026-06-18"
+    })
+    assert res2.status_code == 201
+
+    res3 = await async_client.post("/registrations/", json={
+        "client_id": client_ids[2], "class_id": class_id, "registration_date": "2026-06-18"
+    })
+
+    assert res3.status_code == 409
+    assert res3.json()["message"] == "Cannot register: The class has already reached its maximum capacity."
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_expired_subscription_blocks_entry(async_client: AsyncClient):
+    client_res = await async_client.post("/clients/", json={
+        "name": "Tomasz",
+        "surname": "Bramka",
+        "email": "tomasz.expired@example.com",
+        "phone": "555666777"
+    })
+    client_id = client_res.json()["data"]["client_id"]
+
+    sub_type_res = await async_client.post("/subscriptions/", json={
+        "name": "Expired Pass Base", "price": 100.00, "duration": 30
+    })
+    subscription_id = sub_type_res.json()["data"]["subscription_id"]
+
+    sub_payload = {
+        "client_id": client_id,
+        "subscription_id": subscription_id,
+        "employee_id": 1,
+        "transaction_date": "2026-05-17",
+        "paid_now": "Y",
+        "expiration_date": "2026-06-17"
+    }
+    await async_client.post("/client-subscriptions/", json=sub_payload)
+
+    entry_payload = {
+        "client_id": client_id,
+        "gym_id": 1,
+        "entry_time": "2026-06-18T10:00:00"
+    }
+    entry_res = await async_client.post("/entries/", json=entry_payload)
+
+    assert entry_res.status_code == 403
+    assert entry_res.json()["message"] == "Client does not have an active paid subscription."
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_financial_transaction_and_stock_flow(async_client: AsyncClient):
+    article_payload = {
+        "name": "Baton Proteinowy",
+        "price": 10.00,
+        "type": "Snack",
+        "stock": 10
+    }
+    article_res = await async_client.post("/articles/", json=article_payload)
+    assert article_res.status_code == 201
+    article_id = article_res.json()["data"]["article_id"]
+
+    client_res = await async_client.post("/clients/", json={
+        "name": "Anna",
+        "surname": "Zakupy",
+        "email": "anna.shop@example.com",
+        "phone": "444555666"
+    })
+    assert client_res.status_code == 201
+    client_id = client_res.json()["data"]["client_id"]
+
+    recept_payload = {
+        "name": "John",
+        "surname": "Receptionist",
+        "gender": "M",
+        "date_employed": "2024-01-01",
+        "shift": "night"
+    }
+    recept_res = await async_client.post("/employees/receptionists", json=recept_payload)
+    assert recept_res.status_code == 200
+    recept_id = recept_res.json()["data"]["employee_id"]
+
+    tx_client_payload = {
+        "client_id": client_id,
+        "receptionist_employee_id": recept_id,
+        "transaction_date": "2026-06-18",
+        "articles": [
+            {
+                "article_id": article_id,
+                "quantity": 3
+            }
+        ]
+    }
+    tx_res = await async_client.post("/transactions/", json=tx_client_payload)
+    assert tx_res.status_code == 201
+
+    get_article_res = await async_client.get(f"/articles/{article_id}")
+    assert get_article_res.status_code == 200
+    assert get_article_res.json()["data"]["stock"] == 7
+
+    spent_res = await async_client.get(f"/clients/{client_id}/total_spent")
+    assert spent_res.status_code == 200
+    assert float(spent_res.json()["data"]) == 30.00
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_trigger_restore_stock_on_delete(async_client: AsyncClient):
+    recept_payload = {
+        "name": "John",
+        "surname": "Receptionist",
+        "gender": "M",
+        "date_employed": "2024-01-01",
+        "shift": "night"
+    }
+    recept_res = await async_client.post("/employees/receptionists", json=recept_payload)
+    assert recept_res.status_code == 200
+    recept_id = recept_res.json()["data"]["employee_id"]
+
+    article_res = await async_client.post("/articles/", json={
+        "name": "Baton Testowy", "price": 10.00, "type": "Snack", "stock": 10
+    })
+    assert article_res.status_code == 201
+    article_id = article_res.json()["data"]["article_id"]
+
+    client_res = await async_client.post("/clients/", json={
+        "name": "Jan", "surname": "Kupiec", "email": "jan.delete@test.com", "phone": "111222333"
+    })
+    assert client_res.status_code == 201
+    client_id = client_res.json()["data"]["client_id"]
+
+    tx_payload = {
+        "client_id": client_id,
+        "receptionist_employee_id": recept_id,
+        "transaction_date": "2026-06-18",
+        "articles": [{"article_id": article_id, "quantity": 3}]
+    }
+    tx_res = await async_client.post("/transactions/", json=tx_payload)
+    assert tx_res.status_code == 201
+    tx_id = tx_res.json()["data"]["transaction_client_id"]
+
+    check_article = await async_client.get(f"/articles/{article_id}")
+    assert check_article.status_code == 200
+    assert check_article.json()["data"]["stock"] == 7
+
+    patch_payload = {"articles": []}
+    del_res = await async_client.patch(f"/transactions/{tx_id}", json=patch_payload)
+    assert del_res.status_code == 200
+
+    final_article_res = await async_client.get(f"/articles/{article_id}")
+    assert final_article_res.status_code == 200
+    assert final_article_res.json()["data"]["stock"] == 10
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_trigger_update_stock_quantity_change(async_client: AsyncClient):
+    recept_payload = {
+        "name": "John",
+        "surname": "Receptionist",
+        "gender": "M",
+        "date_employed": "2024-01-01",
+        "shift": "night"
+    }
+    recept_res = await async_client.post("/employees/receptionists", json=recept_payload)
+    assert recept_res.status_code == 200
+    recept_id = recept_res.json()["data"]["employee_id"]
+
+    article_res = await async_client.post("/articles/", json={
+        "name": "Woda", "price": 4.00, "type": "Drink", "stock": 10
+    })
+    assert article_res.status_code == 201
+    article_id = article_res.json()["data"]["article_id"]
+
+    client_res = await async_client.post("/clients/", json={
+        "name": "Marek", "surname": "Woda", "email": "marek.woda@test.com", "phone": "000111222"
+    })
+    assert client_res.status_code == 201
+    client_id = client_res.json()["data"]["client_id"]
+
+    tx_payload = {
+        "client_id": client_id,
+        "receptionist_employee_id": recept_id,
+        "transaction_date": "2026-06-18",
+        "articles": [{"article_id": article_id, "quantity": 3}]
+    }
+    tx_res = await async_client.post("/transactions/", json=tx_payload)
+    assert tx_res.status_code == 201
+    tx_id = tx_res.json()["data"]["transaction_client_id"]
+
+    update_payload = {"articles": [{"article_id": article_id, "quantity": 1}]}
+    upd_res = await async_client.patch(f"/transactions/{tx_id}", json=update_payload)
+    assert upd_res.status_code == 200
+
+    article_check = await async_client.get(f"/articles/{article_id}")
+    assert article_check.status_code == 200
+    assert article_check.json()["data"]["stock"] == 9
+
+    bad_update_payload = {"articles": [{"article_id": article_id, "quantity": 50}]}
+    bad_upd_res = await async_client.patch(f"/transactions/{tx_id}", json=bad_update_payload)
+    assert bad_upd_res.status_code == 503
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_trigger_contract_dates_invalid(async_client: AsyncClient):
+    addr_payload = {
+        "city": "Warszawa",
+        "street": "Marszałkowska",
+        "building_number": 10,
+        "postal_code": "00-001"
+    }
+    addr_res = await async_client.post("/addresses/", json=addr_payload)
+    assert addr_res.status_code == 200
+    address_id = addr_res.json()["data"]["address_id"]
+
+    sponsor_res = await async_client.post("/sponsors/", json={
+        "name": "Sponsor Krokodyl", "contact_person": "Adam Nowak", "email": "krokodyl@test.com", "phone": "555666777"
+    })
+    assert sponsor_res.status_code == 200
+    sponsor_id = sponsor_res.json()["data"]["sponsor_id"]
+
+    gym_res = await async_client.post("/gyms/", json={
+        "name": "Gym Central", "address_id": address_id, "established": "2026-01-01"
+    })
+    assert gym_res.status_code == 200
+    gym_id = gym_res.json()["data"]["gym_id"]
+
+    contract_payload = {
+        "sponsor_id": sponsor_id,
+        "gym_id": gym_id,
+        "contract_date": "2026-06-18",
+        "expiration_date": "2026-06-10",
+        "amount": 5000.00
+    }
+
+    response = await async_client.post("/contracts/", json=contract_payload)
+    assert response.status_code in [422]
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_contract_overlapping_dates_error(async_client: AsyncClient):
+    addr_payload = {
+        "city": "Warszawa",
+        "street": "Marszałkowska",
+        "building_number": 10,
+        "postal_code": "00-001"
+    }
+    addr_res = await async_client.post("/addresses/", json=addr_payload)
+    assert addr_res.status_code == 200
+    address_id = addr_res.json()["data"]["address_id"]
+
+    sponsor_res = await async_client.post("/sponsors/", json={
+        "name": "Sponsor Gepard", "contact_person": "Jan Kowalski", "email": "gepard@test.com", "phone": "888999000"
+    })
+    assert sponsor_res.status_code == 200
+    sponsor_id = sponsor_res.json()["data"]["sponsor_id"]
+
+    gym_res = await async_client.post("/gyms/", json={
+        "name": "Gym Północ", "address_id": address_id, "established": "2026-01-01"
+    })
+    assert gym_res.status_code == 200
+    gym_id = gym_res.json()["data"]["gym_id"]
+
+    first_contract = {
+        "sponsor_id": sponsor_id,
+        "gym_id": gym_id,
+        "contract_date": "2026-06-01",
+        "expiration_date": "2026-06-30",
+        "payment": 3000.00
+    }
+    setup_res = await async_client.post("/contracts/", json=first_contract)
+    assert setup_res.status_code == 200
+
+    overlapping_contract = {
+        "sponsor_id": sponsor_id,
+        "gym_id": gym_id,
+        "contract_date": "2026-06-15",
+        "expiration_date": "2026-07-15",
+        "payment": 4000.00
+    }
+
+    response = await async_client.post("/contracts/", json=overlapping_contract)
+
+    assert response.status_code in [400, 409]
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_trigger_duplicate_active_subscriptions(async_client: AsyncClient):
+    client_res = await async_client.post("/clients/", json={
+        "name": "Anna", "surname": "Kowalska", "email": "anna.sub@test.com", "phone": "666777888"
+    })
+    assert client_res.status_code == 201
+    client_id = client_res.json()["data"]["client_id"]
+
+    sub_res = await async_client.post("/subscriptions/", json={
+        "name": "monthly", "price": 150.00, "duration": 30
+    })
+    assert sub_res.status_code == 201
+    subscription_id = sub_res.json()["data"]["subscription_id"]
+
+    first_sub_payload = {
+        "client_id": client_id,
+        "subscription_id": subscription_id,
+        "paid_now": "Y",
+        "transaction_date": "2026-06-18",
+        "expiration_date": "2026-07-18"
+    }
+    setup_res = await async_client.post("/subscriptions/client-subscriptions", json=first_sub_payload)
+    assert setup_res.status_code == 201
+
+    duplicate_sub_payload = {
+        "client_id": client_id,
+        "subscription_id": subscription_id,
+        "paid_now": "Y",
+        "transaction_date": "2026-06-18",
+        "expiration_date": "2026-07-18"
+    }
+    response = await async_client.post("/subscriptions/client-subscriptions", json=duplicate_sub_payload)
+
+    assert response.status_code == 503
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_trigger_validate_employee_dates(async_client: AsyncClient):
+    emp_payload = {
+        "name": "John",
+        "surname": "Employes",
+        "gender": "M",
+        "date_employed": "2024-01-01",
+        "birth_date": "2024-01-01"
+    }
+    emp_res = await async_client.post("/employees/", json=emp_payload)
+    assert emp_res.status_code == 503
+    
 
 DELETE_ENDPOINTS = [
     "/addresses/999999",

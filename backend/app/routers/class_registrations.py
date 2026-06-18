@@ -9,6 +9,7 @@ from ..database import get_db
 from ..models import ClassRegistration as RegistrationModel, Class as ClassModel, Client as ClientModel, Room as RoomModel, Employee as EmployeeModel, Trainer as TrainerModel
 from ..schemas import ApiResponse, ClassRegistrationSchema, ClassRegistrationCreate, ClassRegistrationUpdate
 from ..utils.error_handle import handle_error, NotFoundError, BadRequestError
+from sqlalchemy.exc import SQLAlchemyError
 
 import math
 
@@ -144,7 +145,7 @@ async def create_registration(
         current_registrations = count_result.scalar()
 
         if current_registrations >= db_class.capacity:
-            raise BadRequestError(
+            raise SQLAlchemyError(
                 f"Cannot register: Class is full. (Capacity: {db_class.capacity})"
             )
 
