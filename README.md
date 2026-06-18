@@ -164,22 +164,30 @@ Projekt pomyślnie implementuje działający system z kompleksową warstwą bazo
 - Rozszerzenie bazy o moduły dla użytkowników końcowych (osiągnięcia, wyzwania) by zwiększyć ich motywację i utrzymanie.
 
 
-
+## Model Relacyjny
 ![BD2 Model relacyjny](docs/etap1_model.png)
+## BD2 Admin Gyms
 ![BD2 Admin Gyms](docs/bd2_gyms.png)
+## BD2 Admin Update
 ![BD2 Admin Update](docs/bd2_gyms_post.png)
+## BD2 Admin Delete
 ![BD2 Admin Delete](docs/bd2_gyms_delete.png)
+## BD2 Admin Edit
 ![BD2 Admin Edit](docs/bd2_gyms_put.png)
+## BD2 Admin Sales
 ![BD2 Admin Sales](docs/bd2_gyms_sales.png)
+## BD2 Admin Subscriptions
 ![BD2 Admin Subscriptions](docs/bd2_gyms_subscriptions.png)
+## BD2 Admin Client Analytics
 ![BD2 Admin Client Analytics](docs/bd2_analitics.png)
+## BD2 Admin Profit Analytics
 ![BD2 Admin Profit Analytics](docs/bd2_analytics.png)
 
 
 
 ## Podział zadań
-- Przemysław Twarowski -> implementacja do tabel subscriptions, entry, equipment "weight,machine,accessory", client-subscriptions. Dodatkowo testy
+- Przemysław Twarowski -> implementacja do tabel subscriptions, entry, equipment "weight,machine,accessory", client-subscriptions. Testy jednostkowe i integracyjne
 - Cezary Jankowski -> > implementacja tabel employee "receptionist, trainer",gym_employee, trainer_class, personal_training. Dodatkowo część analityczno-finansowa.
 - Maciej Krasoń -> implementacja tabel class, class_type, registration, room. Dodatkowo część analityczna klienta.
-- Bartosz Paszkiewicz -> implementacja tabel article,tranaction_article, client,transaction_client, stocktaking
-- Marta Wiśniewska -> implementacja tabel address, gym, contract,sponsor
+- Bartosz Paszkiewicz -> implementacja tabel article,tranaction_article, client,transaction_client, stocktaking. Testy jednostkowe i integracyjne
+- Marta Wiśniewska -> implementacja tabel address, gym, contract,sponsor. Testy jednostkowe i integracyjne
