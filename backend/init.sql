@@ -2095,7 +2095,7 @@ CALL generate_employees_gyms(80);
 CALL generate_equipment(50);
 CALL generate_stocktaking();
 CALL generate_transactions(1000);
-CALL generate_client_subscriptions(500);
+CALL generate_client_subscriptions(1000);
 CALL generate_entries(1000);
 CALL generate_classes(400);
 CALL generate_trainers_classes(30);
@@ -2178,7 +2178,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.get_financial_report(
+CREATE OR REPLACE FUNCTION get_financial_report(
     p_start_date DATE,
     p_end_date DATE
 )
@@ -2195,7 +2195,6 @@ AS $$
 BEGIN
     RETURN QUERY
     WITH RECURSIVE month_range AS (
-        -- Generujemy listę miesięcy w wybranym zakresie czasu
         SELECT DATE_TRUNC('month', p_start_date)::DATE AS m_date
         UNION ALL
         SELECT (m_date + INTERVAL '1 month')::DATE
@@ -2203,7 +2202,6 @@ BEGIN
         WHERE m_date < DATE_TRUNC('month', p_end_date)::DATE
     ),
     income_subscriptions AS (
-        -- Subskrypcje naliczane co miesiąc, dopóki są aktywne
         SELECT
             TO_CHAR(mr.m_date, 'YYYY-MM') AS finance_month,
             SUM(s.price)::NUMERIC(10,2) AS total_subscription_income
@@ -2211,24 +2209,19 @@ BEGIN
         CROSS JOIN client_subscription cs
         JOIN subscription s ON cs.subscription_id = s.subscription_id
         WHERE DATE_TRUNC('month', cs.transaction_date)::DATE <= mr.m_date
-          -- Jeśli Twoja tabela client_subscription ma datę ważności, możesz odkomentować poniższe:
-          -- AND (cs.valid_until IS NULL OR DATE_TRUNC('month', cs.valid_until)::DATE >= mr.m_date)
         GROUP BY mr.m_date
     ),
     income_sponsors AS (
-        -- Kontrakty sponsorskie naliczane co miesiąc na podstawie Twojej tabeli contract
         SELECT
             TO_CHAR(mr.m_date, 'YYYY-MM') AS finance_month,
             SUM(c.payment)::NUMERIC(10,2) AS total_sponsor_income
         FROM month_range mr
         CROSS JOIN contract c
         WHERE DATE_TRUNC('month', c.contract_date)::DATE <= mr.m_date
-          -- Kontrakt wpada do zestawienia tylko wtedy, gdy badany miesiąc nie wykroczył poza expiration_date
           AND DATE_TRUNC('month', c.expiration_date)::DATE >= mr.m_date
         GROUP BY mr.m_date
     ),
     costs_salaries AS (
-        -- Pracownicy opłacani co miesiąc
         SELECT
             TO_CHAR(mr.m_date, 'YYYY-MM') AS finance_month,
             SUM(e.salary)::NUMERIC(10,2) AS total_salary_cost

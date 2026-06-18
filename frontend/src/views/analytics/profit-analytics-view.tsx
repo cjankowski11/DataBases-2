@@ -4,8 +4,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2, XCircle, DollarSign, SlidersHorizontal, TrendingUp, Wallet, ArrowDownCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-
-// Zaimportuj swój zdefiniowany serwis API
 import { AnalyticsProfitTypeService } from "../../services/gym-service";
 
 interface FinancialData {
@@ -22,7 +20,6 @@ export default function FinancialAnalyticsDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Domyślny zakres: ostatnie pół roku wstecz od dzisiejszego dnia (2026 r.)
   const [startDate, setStartDate] = useState<string>("2026-01-01");
   const [endDate, setEndDate] = useState<string>("2026-06-30");
 
@@ -31,7 +28,6 @@ export default function FinancialAnalyticsDashboard() {
       setIsLoading(true);
       setError(null);
 
-      // Metoda getAll przyjmuje obiekt Query mapowany na parametry URL w ApiClient
       const result = await AnalyticsProfitTypeService.getAll({
         start_date: startDate,
         end_date: endDate
@@ -58,12 +54,10 @@ export default function FinancialAnalyticsDashboard() {
     }
   }, [startDate, endDate]);
 
-  // Obliczanie sum podsumowujących dla kart KPI na podstawie pobranego okresu
   const totalPeriodIncome = data.reduce((sum, item) => sum + item.total_income, 0);
   const totalPeriodCosts = data.reduce((sum, item) => sum + item.salary_costs, 0);
   const totalPeriodProfit = data.reduce((sum, item) => sum + item.net_profit, 0);
 
-  // Formatowanie waluty (PLN)
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pl-PL", { style: "currency", currency: "PLN" }).format(value);
   };
@@ -86,7 +80,6 @@ export default function FinancialAnalyticsDashboard() {
         </Alert>
       )}
 
-      {/* Nagłówek strony */}
       <div className="flex items-center gap-3 border-b pb-5">
         <DollarSign className="h-8 w-8 text-primary" />
         <div>
@@ -95,7 +88,6 @@ export default function FinancialAnalyticsDashboard() {
         </div>
       </div>
 
-      {/* Panel filtrów */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-muted/40 p-4 rounded-lg border">
         <div className="flex items-center gap-2">
           <SlidersHorizontal className="h-5 w-5 text-muted-foreground" />
@@ -124,7 +116,6 @@ export default function FinancialAnalyticsDashboard() {
         </div>
       </div>
 
-      {/* Karty KPI (Podsumowanie u góry ekranu) */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -160,7 +151,6 @@ export default function FinancialAnalyticsDashboard() {
         </Card>
       </div>
 
-      {/* Wykres trendu finansowego */}
       <Card className="w-full">
         <CardHeader>
           <CardTitle>Financial Cashflow Trend</CardTitle>
@@ -173,7 +163,6 @@ export default function FinancialAnalyticsDashboard() {
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
-              {/* Posortowane chronologicznie do wykresu (.reverse() ponieważ backend zwraca DESC) */}
               <LineChart data={[...data].reverse()} margin={{ top: 10, right: 20, left: 10, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="year_month" stroke="#888888" fontSize={12} />
@@ -189,7 +178,6 @@ export default function FinancialAnalyticsDashboard() {
         </CardContent>
       </Card>
 
-      {/* Tabela szczegółowa */}
       <Card className="w-full">
         <CardHeader>
           <CardTitle>Detailed Ledger Breakdown</CardTitle>

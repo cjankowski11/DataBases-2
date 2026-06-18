@@ -60,19 +60,17 @@ class FinancialReportResponse(BaseModel):
 
 @router.get("/profit", response_model=ApiResponse)
 async def get_financial_report(
-    start_date: str = Query(..., description="Data początkowa w formacie YYYY-MM-DD", regex=r"^\d{4}-\d{2}-\d{2}$"),
-    end_date: str = Query(..., description="Data końcowa w formacie YYYY-MM-DD", regex=r"^\d{4}-\d{2}-\d{2}$"),
+    start_date: str = Query(..., description="Data początkowa w formacie YYYY-MM-DD", pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    end_date: str = Query(..., description="Data końcowa w formacie YYYY-MM-DD", pattern=r"^\d{4}-\d{2}-\d{2}$"),
     db: AsyncSession = Depends(get_db)
 ):
     try:
-        # Walidacja kolejności dat
         if datetime.strptime(start_date, "%Y-%m-%d") > datetime.strptime(end_date, "%Y-%m-%d"):
             raise BadRequestError("Data początkowa (start_date) nie może być późniejsza niż data końcowa (end_date)")
 
         start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
         end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
 
-        # Wywołanie funkcji PostgreSQL z przekazaniem obiektów typu date
         result = await db.execute(
             text("SELECT * FROM public.get_financial_report(:start_date, :end_date)"),
             {"start_date": start_date_obj, "end_date": end_date_obj}
