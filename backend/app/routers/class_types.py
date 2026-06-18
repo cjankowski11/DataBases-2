@@ -181,7 +181,7 @@ async def delete_class_type(class_type_id: int, db: AsyncSession = Depends(get_d
         classes_using = await db.execute(
             select(ClassModel).where(ClassModel.class_type_id == class_type_id)
         )
-        if classes_using.scalar_one_or_none():
+        if classes_using.first():
             raise BadRequestError(
                 f"Cannot delete class type '{class_type.name}' because it is being used by existing classes. "
                 "Remove or reassign those classes first."

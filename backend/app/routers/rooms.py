@@ -234,7 +234,7 @@ async def delete_room(room_id: int, db: AsyncSession = Depends(get_db)):
         classes_using = await db.execute(
             select(ClassModel).where(ClassModel.room_id == room_id)
         )
-        if classes_using.scalar_one_or_none():
+        if classes_using.first():
             raise BadRequestError(
                 f"Cannot delete room '{room.name}' because it has scheduled classes. "
                 "Reassign or cancel those classes first."
