@@ -2176,6 +2176,7 @@ BEGIN
     ORDER BY cs.total_registrations DESC
     LIMIT p_limit;
 END;
+$$;
 
 CREATE OR REPLACE FUNCTION public.get_financial_report(
     p_start_date DATE,
@@ -2188,7 +2189,9 @@ RETURNS TABLE(
     total_income NUMERIC(10,2),
     salary_costs NUMERIC(10,2),
     net_profit NUMERIC(10,2)
-) AS $$
+)
+LANGUAGE plpgsql
+AS $$
 BEGIN
     RETURN QUERY
     WITH RECURSIVE month_range AS (
@@ -2251,7 +2254,6 @@ BEGIN
     LEFT JOIN costs_salaries sal ON m.finance_month = sal.finance_month
     ORDER BY m.finance_month DESC;
 END;
-$$ LANGUAGE plpgsql;
 $$;
 
 CREATE OR REPLACE FUNCTION get_monthly_gym_entries(
