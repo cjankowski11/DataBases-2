@@ -175,9 +175,9 @@ Projekt pomyślnie implementuje działający system z kompleksową warstwą bazo
 ## BD2 Admin Edit
 ![BD2 Admin Edit](docs/bd2_gyms_put.png)
 ## BD2 Admin Sales
-![BD2 Admin Sales](docs/bd2_gyms_sales.png)
+![BD2 Admin Sales](docs/bd2_sales.png)
 ## BD2 Admin Subscriptions
-![BD2 Admin Subscriptions](docs/bd2_gyms_subscriptions.png)
+![BD2 Admin Subscriptions](docs/bd2_subscriptions.png)
 ## BD2 Admin Client Analytics
 ![BD2 Admin Client Analytics](docs/bd2_analitics.png)
 ## BD2 Admin Profit Analytics
