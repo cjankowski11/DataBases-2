@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, Query, status, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload, with_polymorphic
 from typing import Optional
 from datetime import date
 
 
 from ..database import get_db
-from ..models import Class as ClassModel, Room as RoomModel, ClassType as ClassTypeModel, ClassRegistration as RegistrationModel
+from ..models import Class as ClassModel, Room as RoomModel, ClassType as ClassTypeModel, ClassRegistration as RegistrationModel, Employee as EmployeeModel, Trainer as TrainerModel
 from ..schemas import ApiResponse, ClassSchema, ClassCreate, ClassUpdate
 from ..utils.error_handle import handle_error, NotFoundError, BadRequestError
 
@@ -29,7 +29,8 @@ async def get_classes(
             select(ClassModel)
             .options(
                 joinedload(ClassModel.class_type),
-                joinedload(ClassModel.room).joinedload(RoomModel.gym)
+                joinedload(ClassModel.room).joinedload(RoomModel.gym),
+                selectinload(ClassModel.trainers.of_type(with_polymorphic(EmployeeModel, [TrainerModel])))
             )
         )
 
@@ -69,7 +70,8 @@ async def get_class(class_id: int, db: AsyncSession = Depends(get_db)):
             select(ClassModel)
             .options(
                 joinedload(ClassModel.class_type),
-                joinedload(ClassModel.room).joinedload(RoomModel.gym)
+                joinedload(ClassModel.room).joinedload(RoomModel.gym),
+                selectinload(ClassModel.trainers.of_type(with_polymorphic(EmployeeModel, [TrainerModel])))
             )
         ).where(ClassModel.class_id == class_id)
         result = await db.execute(query)
@@ -131,7 +133,18 @@ async def create_class(
         if payload.capacity > 100:
             raise BadRequestError("Capacity cannot exceed 100 people")
 
-        new_class = ClassModel(**payload.model_dump())
+        class_data = payload.model_dump(exclude={"trainer_ids"})
+        new_class = ClassModel(**class_data)
+        if payload.trainer_ids:
+            trainer_query = select(TrainerModel).where(TrainerModel.employee_id.in_(payload.trainer_ids))
+            trainer_result = await db.execute(trainer_query)
+            trainers = trainer_result.scalars().all()
+
+            if len(trainers) != len(payload.trainer_ids):
+                raise BadRequestError("One or more provided IDs are not registered as active trainers.")
+
+            new_class.trainers.extend(trainers)
+
         db.add(new_class)
         await db.commit()
 
@@ -139,7 +152,8 @@ async def create_class(
             select(ClassModel)
             .options(
                 joinedload(ClassModel.class_type),
-                joinedload(ClassModel.room).joinedload(RoomModel.gym)
+                joinedload(ClassModel.room).joinedload(RoomModel.gym),
+                selectinload(ClassModel.trainers.of_type(with_polymorphic(EmployeeModel, [TrainerModel])))
             )
             .where(ClassModel.class_id == new_class.class_id)
         )
@@ -166,12 +180,19 @@ async def update_class(
         if class_id <= 0:
             raise BadRequestError("Invalid class ID")
 
-        db_class = await db.get(ClassModel, class_id)
+        query_class = (
+            select(ClassModel)
+            .options(selectinload(ClassModel.trainers))
+            .where(ClassModel.class_id == class_id)
+        )
+        class_result = await db.execute(query_class)
+        db_class = class_result.scalar_one_or_none()
+
         if not db_class:
             raise NotFoundError(resource="Class", id=class_id)
 
-        update_data = payload.model_dump(exclude_unset=True)
-        if not update_data:
+        update_data = payload.model_dump(exclude_unset=True, exclude={"trainer_ids"})
+        if not update_data and payload.trainer_ids is None:
             raise BadRequestError("No fields provided for update")
 
         # Validate class type if being updated
@@ -192,7 +213,7 @@ async def update_class(
             if not room:
                 raise NotFoundError(resource="Room", id=update_data["room_id"])
 
-       
+
 
         # Validate class date if being updated
         if "class_date" in update_data:
@@ -245,13 +266,27 @@ async def update_class(
         for key, value in update_data.items():
             setattr(db_class, key, value)
 
+        if payload.trainer_ids is not None:
+            if len(payload.trainer_ids) == 0:
+                db_class.trainers = []
+            else:
+                trainer_query = select(TrainerModel).where(TrainerModel.employee_id.in_(payload.trainer_ids))
+                trainer_result = await db.execute(trainer_query)
+                new_trainers = trainer_result.scalars().all()
+
+                if len(new_trainers) != len(payload.trainer_ids):
+                    raise BadRequestError("One or more provided IDs are not registered as active trainers.")
+
+                db_class.trainers = new_trainers
+
         await db.commit()
 
         query = (
             select(ClassModel)
             .options(
                 joinedload(ClassModel.class_type),
-                joinedload(ClassModel.room).joinedload(RoomModel.gym)
+                joinedload(ClassModel.room).joinedload(RoomModel.gym),
+                selectinload(ClassModel.trainers.of_type(with_polymorphic(EmployeeModel, [TrainerModel])))
             )
             .where(ClassModel.class_id == class_id)
         )

@@ -7,7 +7,7 @@ from .database import engine, Base
 from .routers import (rooms, classes, class_types, class_registrations,
                     addresses, gyms, contracts, sponsors,
                     clients, articles, stocktakings, transactions,  subscriptions, equipment, entries,
-                    employees, personaltrainings, receptionists, trainers, gym_employment)
+                    employees, personaltrainings, receptionists, trainers, gym_employment, analytics)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -58,6 +58,7 @@ app.include_router(addresses.router)
 app.include_router(gyms.router)
 app.include_router(contracts.router)
 app.include_router(sponsors.router)
+app.include_router(analytics.router)
 
 
 @app.get("/")

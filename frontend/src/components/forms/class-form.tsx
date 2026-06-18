@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ClassService, ClassTypeService, RoomService } from "@/services/gym-service";
-import type { ClassType, Room } from "@/types/gym-types";
+import { ClassService, ClassTypeService, RoomService, TrainerService } from "@/services/gym-service";
+import type { ClassType, Room, Trainer } from "@/types/gym-types";
 import { Loader2, PlusCircle, Calendar, Dumbbell, DoorOpen, Timer, Users, CheckCircle, XCircle } from "lucide-react";
 import {
   Alert,
@@ -20,8 +20,10 @@ export function ClassForm({ onSuccess }: ClassFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [classTypes, setClassTypes] = useState<ClassType[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [selectedClassType, setSelectedClassType] = useState<string>("");
   const [selectedRoom, setSelectedRoom] = useState<string>("");
+  const [selectedTrainers, setSelectedTrainers] = useState<string[]>([]);
 
   // Client-side validation errors
   const [validationErrors, setValidationErrors] = useState<{
@@ -30,19 +32,22 @@ export function ClassForm({ onSuccess }: ClassFormProps) {
     class_date?: string;
     duration?: string;
     capacity?: string;
+    trainer_ids?: string;
   }>({});
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [typesData, roomsData] = await Promise.all([
+        const [typesData, roomsData, trainersData] = await Promise.all([
           ClassTypeService.getAll(),
           RoomService.getAll(),
+          TrainerService.getAll(),
         ]);
         setClassTypes(typesData);
         setRooms(roomsData);
+        setTrainers(trainersData);
       } catch (err) {
-        setError("Failed to load class types or rooms list");
+        setError("Failed to load class types or rooms or trainers list");
       } finally {
         setIsFetchingData(false);
       }
@@ -51,7 +56,7 @@ export function ClassForm({ onSuccess }: ClassFormProps) {
   }, []);
 
   const validateForm = (formData: FormData): boolean => {
-    const errors: { class_type_id?: string; room_id?: string; class_date?: string; duration?: string; capacity?: string } = {};
+    const errors: { class_type_id?: string; room_id?: string; class_date?: string; duration?: string; capacity?: string; trainer_ids?: string } = {};
 
     // Validate class type
     const classTypeId = formData.get("class_type_id") as string;
@@ -76,6 +81,20 @@ export function ClassForm({ onSuccess }: ClassFormProps) {
         errors.room_id = "Invalid room selection";
       } else if (!rooms.some(r => r.room_id === roomIdNum)) {
         errors.room_id = "Selected room does not exist";
+      }
+    }
+
+    // Validate trainers
+    const trainerIds = formData.getAll("trainer_ids") as string[];
+    if (!trainerIds || trainerIds.length === 0) {
+      errors.trainer_ids = "Please select at least one trainer";
+    } else {
+      const allTrainersValid = trainerIds.every(id => {
+        const idNum = parseInt(id);
+        return !isNaN(idNum) && trainers.some(t => t.employee_id === idNum);
+      });
+      if (!allTrainersValid) {
+        errors.trainer_ids = "One or more selected trainers are invalid";
       }
     }
 
@@ -144,12 +163,15 @@ export function ClassForm({ onSuccess }: ClassFormProps) {
 
     setIsLoading(true);
 
+    const rawTrainerIds = formData.getAll("trainer_ids") as string[];
+
     const payload = {
       class_date: formData.get("class_date") as string,
       class_type_id: parseInt(formData.get("class_type_id") as string),
       duration: parseInt(formData.get("duration") as string),
       capacity: parseInt(formData.get("capacity") as string),
       room_id: parseInt(formData.get("room_id") as string),
+      trainer_ids: rawTrainerIds.map(id => parseInt(id))
     };
 
     try {
@@ -162,7 +184,7 @@ export function ClassForm({ onSuccess }: ClassFormProps) {
     }
   };
 
-  const handleSelectChange = (field: 'class_type_id' | 'room_id') => {
+  const handleSelectChange = (field: 'class_type_id' | 'room_id' | 'trainer_ids') => {
     if (validationErrors[field]) {
       setValidationErrors(prev => ({ ...prev, [field]: undefined }));
     }
@@ -332,6 +354,35 @@ export function ClassForm({ onSuccess }: ClassFormProps) {
             </p>
           )}
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium flex items-center gap-2">
+          <DoorOpen className="w-4 h-4" /> Trainers
+          <span className="text-destructive">*</span>
+        </label>
+        <select
+          name="trainer_ids"
+          required
+          multiple
+          value={selectedTrainers}
+          onChange={(e) => {
+            const options = Array.from(e.target.selectedOptions, option => option.value);
+            setSelectedTrainers(options);
+            handleSelectChange('trainer_ids');
+          }}
+          disabled={isLoading}
+          className={`flex h-20 w-full rounded-md border ${validationErrors.trainer_ids ? 'border-destructive' : 'border-input'} bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50`}
+        >
+          {trainers.map((t) => (
+            <option key={t.employee_id} value={t.employee_id}>
+              {t.name} {t.surname} - {t.specialization}
+            </option>
+          ))}
+        </select>
+        {validationErrors.trainer_ids && (
+          <p className="text-sm text-destructive">{validationErrors.trainer_ids}</p>
+        )}
       </div>
 
       <Button type="submit" className="w-full" disabled={isLoading}>

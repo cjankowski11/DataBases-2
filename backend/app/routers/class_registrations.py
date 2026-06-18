@@ -2,13 +2,15 @@ from datetime import date
 from fastapi import APIRouter, Depends, Query, status, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload, with_polymorphic
 from typing import Optional
 
 from ..database import get_db
-from ..models import ClassRegistration as RegistrationModel, Class as ClassModel, Client as ClientModel, Room as RoomModel
+from ..models import ClassRegistration as RegistrationModel, Class as ClassModel, Client as ClientModel, Room as RoomModel, Employee as EmployeeModel, Trainer as TrainerModel
 from ..schemas import ApiResponse, ClassRegistrationSchema, ClassRegistrationCreate, ClassRegistrationUpdate
 from ..utils.error_handle import handle_error, NotFoundError, BadRequestError
+
+import math
 
 
 router = APIRouter(prefix="/registrations", tags=["registrations"])
@@ -19,7 +21,11 @@ async def get_registrations(
     client_id: Optional[int] = Query(None, gt=0),
     class_id: Optional[int] = Query(None, gt=0),
     start_date: Optional[date] = Query(None),
-    end_date: Optional[date] = Query(None)
+    end_date: Optional[date] = Query(None),
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
+    sort_by: str = Query("date", description="Options: id, client, class, date"),
+    sort_order: str = Query("desc", description="Options: asc, desc")
 ):
     try:
         query = (
@@ -27,7 +33,10 @@ async def get_registrations(
             .options(
                 joinedload(RegistrationModel.client),
                 joinedload(RegistrationModel.class_info).joinedload(ClassModel.class_type),
-                joinedload(RegistrationModel.class_info).joinedload(ClassModel.room).joinedload(RoomModel.gym)
+                joinedload(RegistrationModel.class_info).joinedload(ClassModel.room).joinedload(RoomModel.gym),
+                joinedload(RegistrationModel.class_info).selectinload(
+                    ClassModel.trainers.of_type(with_polymorphic(EmployeeModel, [TrainerModel]))
+                )
             )
         )
 
@@ -40,6 +49,26 @@ async def get_registrations(
         if end_date is not None:
             query = query.where(RegistrationModel.registration_date <= end_date)
 
+        sort_attr = RegistrationModel.registration_date
+        if sort_by == "id":
+            sort_attr = RegistrationModel.class_registration_id
+        elif sort_by == "client":
+            sort_attr = RegistrationModel.client_id
+        elif sort_by == "class":
+            sort_attr = RegistrationModel.class_id
+
+        if sort_order == "desc":
+            query = query.order_by(sort_attr.desc())
+        else:
+            query = query.order_by(sort_attr.asc())
+
+        count_query = select(func.count()).select_from(query.subquery())
+        total_count_result = await db.execute(count_query)
+        total_count = total_count_result.scalar() or 0
+
+        offset = (page - 1) * limit
+        query = query.offset(offset).limit(limit)
+
         result = await db.execute(query)
         registrations_db = result.scalars().all()
 
@@ -47,7 +76,13 @@ async def get_registrations(
 
         return {
             "status": "SUCCEEDED",
-            "data": validated_data,
+            "data": {
+                "items": validated_data,
+                "total": total_count,
+                "page": page,
+                "limit": limit,
+                "total_pages": math.ceil(total_count / limit) if total_count else 1
+            },
             "message": "Registrations retrieved successfully"
         }
     except Exception as e:
@@ -64,7 +99,10 @@ async def get_registration(class_registration_id: int, db: AsyncSession = Depend
             .options(
                 joinedload(RegistrationModel.client),
                 joinedload(RegistrationModel.class_info).joinedload(ClassModel.class_type),
-                joinedload(RegistrationModel.class_info).joinedload(ClassModel.room).joinedload(RoomModel.gym)
+                joinedload(RegistrationModel.class_info).joinedload(ClassModel.room).joinedload(RoomModel.gym),
+                joinedload(RegistrationModel.class_info).selectinload(
+                    ClassModel.trainers.of_type(with_polymorphic(EmployeeModel, [TrainerModel]))
+                )
             )
         ).where(RegistrationModel.class_registration_id == class_registration_id)
 
@@ -138,7 +176,10 @@ async def create_registration(
             .options(
                 joinedload(RegistrationModel.client),
                 joinedload(RegistrationModel.class_info).joinedload(ClassModel.class_type),
-                joinedload(RegistrationModel.class_info).joinedload(ClassModel.room).joinedload(RoomModel.gym)
+                joinedload(RegistrationModel.class_info).joinedload(ClassModel.room).joinedload(RoomModel.gym),
+                joinedload(RegistrationModel.class_info).selectinload(
+                    ClassModel.trainers.of_type(with_polymorphic(EmployeeModel, [TrainerModel]))
+                )
             )
             .where(RegistrationModel.class_registration_id == new_registration.class_registration_id)
         )
@@ -247,7 +288,11 @@ async def update_registration(
             .options(
                 joinedload(RegistrationModel.client),
                 joinedload(RegistrationModel.class_info).joinedload(ClassModel.class_type),
-                joinedload(RegistrationModel.class_info).joinedload(ClassModel.room).joinedload(RoomModel.gym)
+                joinedload(RegistrationModel.class_info).joinedload(ClassModel.room).joinedload(RoomModel.gym),
+                joinedload(RegistrationModel.class_info).selectinload(
+                    ClassModel.trainers.of_type(with_polymorphic(EmployeeModel, [TrainerModel]))
+                )
+
             )
             .where(RegistrationModel.class_registration_id == class_registration_id)
         )

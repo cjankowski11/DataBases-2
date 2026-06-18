@@ -21,6 +21,7 @@ export interface GymClass {
   class_type: ClassType;
   room: Room;
   occupancy_pct: number;
+  trainers: Trainer[];
 }
 
 export interface Registration {
@@ -170,7 +171,7 @@ export interface Employee {
 export interface Receptionist extends Employee {
   shift: string;
 }
-  
+
 export interface Trainer extends Employee {
   specialization: string;
   hourly_wage: number;
@@ -181,7 +182,7 @@ export interface PersonalTraining {
   client_id: number;
   trainer_id: number;
   duration: number;
-  start_time: string;   
+  start_time: string;
 
   client?: {
     name: string;
@@ -196,7 +197,7 @@ export interface PersonalTraining {
 export interface GymEmployee {
   gym_id: number;
   employee_id: number;
-  
+
   gym?: Gym;
   employee?: Employee;
 }
@@ -236,4 +237,25 @@ export interface Contract {
   expiration_date: string;
   gym?: Gym;
   sponsor?: Sponsor;
+}
+
+
+export interface ClassTypesAnalytics {
+  class_type_name: string;
+  total_classes: number;
+  total_registrations: number;
+  total_capacity: number;
+  avg_occupancy_rate: number;
+  total_available_spots: number;
+}
+
+export interface GymEntriesAnalytics {
+  gym_id: number;
+  total_entries: number;
+  avg_daily_entries: number;
+}
+
+export interface SubscriptionsAnalytics {
+  subscription_name: string;
+  total_purchased: number;
 }
