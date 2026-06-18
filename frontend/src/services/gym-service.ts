@@ -1,5 +1,5 @@
 import { ApiClient } from "./api-client";
-import type { GymClass, Room, Registration,GymEmployee, PersonalTraining, ClassType, Subscription, Entry,Equipment, ClientSubscription, Employee, Client, Article, Stocktaking, TransactionClient, Gym, Address, Sponsor, Contract, Receptionist, Trainer } from "@/types/gym-types";
+import type { GymClass, Room, Registration,GymEmployee, PersonalTraining, ClassType, Subscription, Entry,Equipment, ClientSubscription, Employee, Client, Article, Stocktaking, TransactionClient, Gym, Address, Sponsor, Contract, Receptionist, Trainer, ClassTypesAnalytics, GymEntriesAnalytics, SubscriptionsAnalytics } from "@/types/gym-types";
 
 export const ClassService = new ApiClient<GymClass>("/classes/");
 export const RoomService = new ApiClient<Room>("/rooms/");
@@ -84,3 +84,7 @@ export const ClientService = new ApiClient<Client>("/clients/");
 export const ArticleService = new ApiClient<Article>("/articles/");
 export const StocktakingService = new ApiClient<Stocktaking>("/stocktakings/");
 export const TransactionService = new ApiClient<TransactionClient>("/transactions/");
+
+export const AnalyticsClassTypeService = new ApiClient<ClassTypesAnalytics>("/analytics/popular-class-types");
+export const AnalyticsGymEntriesService = new ApiClient<GymEntriesAnalytics>("/analytics/gym-entries");
+export const AnalyticsSubscriptionService = new ApiClient<SubscriptionsAnalytics>("/analytics/subscriptions");

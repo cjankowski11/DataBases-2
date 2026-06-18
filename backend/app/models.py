@@ -35,6 +35,7 @@ class Class(Base):
 
     class_type = relationship("ClassType")
     room = relationship("Room")
+    trainers = relationship("Employee", secondary="trainer_class", backref="classes")
 
 
 class Client(Base):
@@ -73,7 +74,7 @@ class Employee(Base):
         "polymorphic_on": employee_type,
         "polymorphic_identity": "employee",
     }
-    
+
 
 class Receptionist(Employee):
     __tablename__ = "receptionist"

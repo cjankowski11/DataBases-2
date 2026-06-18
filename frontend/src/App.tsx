@@ -25,7 +25,7 @@ import ReceptionistCreateView from "@/views/receptionist-create-view";
 import TrainerCreateView from "@/views/trainer-create-view";
 import PersonalTrainingsView from "./views/personal-training-view";
 import GymEmployeesDetailView from "./views/gym-employees-view";
-
+import ClientAnalyticsDashboard from "./views/analytics/client-analytics-view";
 
 export default function App() {
   return (
@@ -64,6 +64,7 @@ export default function App() {
                 <Route path="/receptionists/new" component={ReceptionistCreateView}/>
                 <Route path="/trainers/new" component={TrainerCreateView}/>
                 <Route path="/gyms/:gym_id/employees" component={GymEmployeesDetailView} />
+                <Route path="/analytics/clients" component={ClientAnalyticsDashboard} />
                 <Route>
                   <Redirect to="/gyms" />
                 </Route>

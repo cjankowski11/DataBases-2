@@ -152,6 +152,7 @@ export function ClassListView({ data, onEdit, onDelete }: ClassListViewProps) {
                 {getSortIcon('difficulty')}
               </div>
             </TableHead>
+            <TableHead>Trainers</TableHead>
             <TableHead className="text-right w-[100px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -194,6 +195,23 @@ export function ClassListView({ data, onEdit, onDelete }: ClassListViewProps) {
                   >
                     Level {c.class_type?.difficulty || 0}
                   </Badge>
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-wrap gap-1 max-w-[200px]">
+                    {c.trainers && c.trainers.length > 0 ? (
+                      c.trainers.map((trainer) => (
+                        <Badge
+                          key={trainer.employee_id}
+                          variant="outline"
+                          className="bg-background text-xs font-normal"
+                        >
+                          {trainer.name} {trainer.surname}
+                        </Badge>
+                      ))
+                    ) : (
+                      <span className="text-xs text-muted-foreground italic">No trainers</span>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell className="text-right">
                   <TableActions

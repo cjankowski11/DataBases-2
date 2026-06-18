@@ -1,5 +1,5 @@
 import { Link, useRoute } from "wouter";
-import { Building2, Dumbbell, DoorOpen, Flame, ClipboardList, LayoutDashboard, Layers, CreditCard, ToolCase, UserCheck, Users, MapPinHouse, CircleDollarSign, FileText,  Package, ClipboardCheck, ShoppingCart } from "lucide-react";
+import { Building2, Dumbbell, DoorOpen, Flame, ClipboardList, LayoutDashboard, Layers, CreditCard, ToolCase, UserCheck, Users, MapPinHouse, CircleDollarSign, FileText,  Package, ClipboardCheck, ShoppingCart, ChartColumn } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -35,6 +35,11 @@ const navItems = [
 
 ];
 
+const navAnalyticsItems = [
+  { title: "Client Analytics", url: "/analytics/clients", icon: ChartColumn },
+
+];
+
 export function AppSidebar() {
   return (
     <Sidebar variant="sidebar" collapsible="icon">
@@ -50,6 +55,26 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map((item) => {
+                const [isActive] = useRoute(item.url);
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
+                      <Link href={item.url}>
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel>Analytics</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navAnalyticsItems.map((item) => {
                 const [isActive] = useRoute(item.url);
                 return (
                   <SidebarMenuItem key={item.title}>
