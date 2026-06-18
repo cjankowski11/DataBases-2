@@ -211,7 +211,7 @@ export default function ClientAnalyticsDashboard() {
                     <Tooltip />
                     <Legend />
                     <Bar dataKey="total_registrations" name="Total Registrations" fill="#2563eb" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="total_capacity" name="Room Capacity" fill="#e2e8f0" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="total_capacity" name="Room Capacity" fill="#eb0a0a" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
